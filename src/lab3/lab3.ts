@@ -13,7 +13,6 @@ export function csvToJSON(input: string[], delimiter: string): object[] {
     throw new Error("Ошибка: массив input должен содержать хотя бы строку заголовка.");
   }
 
-  // ✅ TS-friendly: явно берём header и проверяем
   const headerLine = input[0];
   if (typeof headerLine !== "string") {
     throw new Error("Ошибка: первая строка (заголовок) должна быть строкой.");
@@ -27,7 +26,6 @@ export function csvToJSON(input: string[], delimiter: string): object[] {
   const result: object[] = [];
 
   for (let rowIndex = 1; rowIndex < input.length; rowIndex++) {
-    // ✅ TS-friendly: явно берём строку и проверяем
     const row = input[rowIndex];
     if (typeof row !== "string") {
       throw new Error("Ошибка: строка данных должна быть строкой.");
@@ -47,7 +45,6 @@ export function csvToJSON(input: string[], delimiter: string): object[] {
       const key = headers[colIndex];
       const raw = values[colIndex];
 
-      // ✅ дополнительная страховка для strict режима
       if (key === undefined || raw === undefined) {
         throw new Error(
           "Ошибка: обнаружено несоответствие структуры CSV (не хватает столбца или значения)."

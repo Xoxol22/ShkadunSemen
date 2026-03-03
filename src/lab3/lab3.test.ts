@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// ВАЖНО: мок ДО любых импортов, которые используют fs/promises
 vi.mock("node:fs/promises", () => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
@@ -9,7 +8,6 @@ vi.mock("node:fs/promises", () => ({
 import { readFile, writeFile } from "node:fs/promises";
 import { csvToJSON, formatCSVFileToJSONFile } from "./lab3";
 
-// Делает типизированные моки (без кастов ReturnType<typeof vi.fn>)
 const readFileMock = vi.mocked(readFile);
 const writeFileMock = vi.mocked(writeFile);
 
