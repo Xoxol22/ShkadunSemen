@@ -1,34 +1,27 @@
+import { FormulaBar } from './FormulaBar';
 import { SpreadsheetGrid } from './SpreadsheetGrid';
+import { ContextMenu } from './ContextMenu';
 import { useSpreadsheetStore } from '../../spreadsheetStore';
-import { getCellLabel } from '../../cellUtils';
 
 export function SpreadsheetPage() {
-  const activeCell = useSpreadsheetStore((state) => state.activeCell);
-  const formulaValue = useSpreadsheetStore((state) => state.formulaValue);
-  const setFormulaValue = useSpreadsheetStore((state) => state.setFormulaValue);
+  const fillDemoData = useSpreadsheetStore((state) => state.fillDemoData);
+  const setRows = useSpreadsheetStore((state) => state.setRows);
 
   return (
     <div className="page">
       <div className="topPanel">
-        <button>Demo data</button>
-        <button>1000 rows</button>
-        <button>100 rows</button>
+        <button onClick={fillDemoData}>Demo data</button>
+        <button onClick={() => setRows(1000)}>1000 rows</button>
+        <button onClick={() => setRows(100)}>100 rows</button>
       </div>
 
-      <div className="formulaBar">
-        <div className="cellName">
-          {getCellLabel(activeCell.row, activeCell.col)}
-        </div>
-
-        <input
-          value={formulaValue}
-          onChange={(event) => setFormulaValue(event.target.value)}
-        />
-      </div>
+      <FormulaBar />
 
       <main className="sheetShell">
         <SpreadsheetGrid />
       </main>
+
+      <ContextMenu />
     </div>
   );
 }

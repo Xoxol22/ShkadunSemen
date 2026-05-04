@@ -1,4 +1,9 @@
-import type { CellPosition } from './types';
+import type { CellPosition, SelectionRange } from './types';
+
+export const DEFAULT_ROWS = 100;
+export const DEFAULT_COLS = 26;
+export const DEFAULT_ROW_HEIGHT = 28;
+export const DEFAULT_COL_WIDTH = 100;
 
 export function getCellKey(row: number, col: number): string {
   return `${row}:${col}`;
@@ -15,10 +20,6 @@ export function getColumnName(col: number): string {
   }
 
   return name;
-}
-
-export function getCellLabel(row: number, col: number): string {
-  return `${getColumnName(col)}${row + 1}`;
 }
 
 export function parseCellRef(ref: string): CellPosition | null {
@@ -40,4 +41,34 @@ export function parseCellRef(ref: string): CellPosition | null {
     row: Number(rowText) - 1,
     col: col - 1,
   };
+}
+
+export function getCellLabel(row: number, col: number): string {
+  return `${getColumnName(col)}${row + 1}`;
+}
+
+export function normalizeRange(range: SelectionRange): SelectionRange {
+  return {
+    start: {
+      row: Math.min(range.start.row, range.end.row),
+      col: Math.min(range.start.col, range.end.col),
+    },
+    end: {
+      row: Math.max(range.start.row, range.end.row),
+      col: Math.max(range.start.col, range.end.col),
+    },
+  };
+}
+
+export function isCellInRange(row: number, col: number, range: SelectionRange | null): boolean {
+  if (!range) return false;
+
+  const normalized = normalizeRange(range);
+
+  return (
+    row >= normalized.start.row &&
+    row <= normalized.end.row &&
+    col >= normalized.start.col &&
+    col <= normalized.end.col
+  );
 }

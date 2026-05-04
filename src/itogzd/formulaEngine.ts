@@ -2,15 +2,15 @@ import type { CellData } from './types';
 import { getCellKey, parseCellRef } from './cellUtils';
 
 function toNumber(value: unknown): number {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
 }
 
 function getCellNumber(cells: Record<string, CellData>, ref: string): number {
-  const position = parseCellRef(ref);
-  if (!position) return 0;
+  const pos = parseCellRef(ref);
+  if (!pos) return 0;
 
-  const cell = cells[getCellKey(position.row, position.col)];
+  const cell = cells[getCellKey(pos.row, pos.col)];
   return toNumber(cell?.computed ?? cell?.raw ?? 0);
 }
 
@@ -58,21 +58,10 @@ export function detectCellType(raw: string): CellData['type'] {
 export function computeCell(raw: string, cells: Record<string, CellData>): CellData {
   const type = detectCellType(raw);
 
-  if (type === 'empty') {
-    return { raw, computed: '', type };
-  }
-
-  if (type === 'number') {
-    return { raw, computed: Number(raw), type };
-  }
-
-  if (type === 'boolean') {
-    return { raw, computed: raw.trim() === 'true', type };
-  }
-
-  if (type === 'string') {
-    return { raw, computed: raw, type };
-  }
+  if (type === 'empty') return { raw, computed: '', type };
+  if (type === 'number') return { raw, computed: Number(raw), type };
+  if (type === 'boolean') return { raw, computed: raw.trim() === 'true', type };
+  if (type !== 'formula') return { raw, computed: raw, type };
 
   try {
     const expression = raw.slice(1).trim().toUpperCase();
