@@ -1,6 +1,12 @@
 import { SpreadsheetGrid } from './SpreadsheetGrid';
+import { useSpreadsheetStore } from '../../spreadsheetStore';
+import { getCellLabel } from '../../cellUtils';
 
 export function SpreadsheetPage() {
+  const activeCell = useSpreadsheetStore((state) => state.activeCell);
+  const formulaValue = useSpreadsheetStore((state) => state.formulaValue);
+  const setFormulaValue = useSpreadsheetStore((state) => state.setFormulaValue);
+
   return (
     <div className="page">
       <div className="topPanel">
@@ -10,8 +16,14 @@ export function SpreadsheetPage() {
       </div>
 
       <div className="formulaBar">
-        <div className="cellName">A1</div>
-        <input />
+        <div className="cellName">
+          {getCellLabel(activeCell.row, activeCell.col)}
+        </div>
+
+        <input
+          value={formulaValue}
+          onChange={(event) => setFormulaValue(event.target.value)}
+        />
       </div>
 
       <main className="sheetShell">
