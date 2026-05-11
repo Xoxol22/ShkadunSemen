@@ -335,13 +335,6 @@ input {
 }
 
 .documentActions button,
-.documentActions select {
-  border: 1px solid #cbd5e1;
-  background: white;
-  padding: 7px 9px;
-  border-radius: 8px;
-  cursor: pointer;
-}
 
 .documentActions button:hover,
 .documentActions select:hover {
@@ -392,4 +385,40 @@ input {
 .documentActions .dangerButton {
   color: #dc2626;
   border-color: #fecaca;
+}
+
+
+.previewTable {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  border-top: 1px solid #e5e7eb;
+  border-left: 1px solid #e5e7eb;
+  margin: 14px 0;
+}
+
+.previewCell {
+  min-height: 34px;
+  padding: 7px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.renameInput {
+  width: 100%;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 5px 7px;
+  font-size: 20px;
+  font-weight: 700;
+  outline: none;
+}
+
+.renameInput:focus {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
