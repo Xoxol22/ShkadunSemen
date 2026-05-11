@@ -9,6 +9,8 @@ import {
   setEditingCell,
   setColumnWidth,
   setRowHeight,
+  undo,
+  redo,
 } from '../../store/slices/spreadsheetSlice';
 import { setSaveStatus, setUnsavedChanges, openContextMenu} from '../../store/slices/uiSlice';
 
@@ -158,12 +160,25 @@ export function SpreadsheetGrid() {
       className="gridViewport"
       tabIndex={0}
       onKeyDown={(event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+          event.preventDefault();
+          dispatch(undo());
+          return;
+        }
+
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+          event.preventDefault();
+          dispatch(redo());
+          return;
+        }
+        
         if (editingCell) return;
 
         if (!activeCell) {
           dispatch(setActiveCell({ position: { row: 0, col: 0 } }));
           return;
         }
+        
 
         if (event.key === 'Enter') {
           event.preventDefault();
@@ -194,6 +209,7 @@ export function SpreadsheetGrid() {
           dispatch(moveActiveCell({ rowDelta: 0, colDelta: 1, shiftKey: event.shiftKey }));
           return;
         }
+
 
         if (
           event.key.length === 1 &&

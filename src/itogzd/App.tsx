@@ -18,5 +18,5 @@ const openedDocument = useAppSelector((state) => state.documents.activeDocument)
     );
   }
 
-  return <DocumentsPage onOpenDocument={(document) => dispatch(setActiveDocument(document))} />;
+  return <DocumentsPage />;
 }

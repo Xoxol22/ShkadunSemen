@@ -6,9 +6,9 @@ import {
   addDocument,
   deleteDocument as deleteDocumentAction,
   renameDocument,
-  setDocuments,
-  setDocumentsLoading,
+  loadDocuments,
   updateDocumentPreview,
+  loadDocumentById,
 } from '../../store/slices/documentsSlice';
 
 
@@ -21,16 +21,7 @@ type DocumentItem = {
 };
 
 
-type DocumentsPageProps = {
-  onOpenDocument: (document: {
-    id: string;
-    title: string;
-    preview: string[][];
-  }) => void;
-};
-
-
-export function DocumentsPage({ onOpenDocument }: DocumentsPageProps) {
+export function DocumentsPage() {
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
@@ -41,50 +32,7 @@ export function DocumentsPage({ onOpenDocument }: DocumentsPageProps) {
     const isLoading = useAppSelector((state) => state.documents.isLoading);
 
     useEffect(() => {
-    async function loadDocuments() {
-        dispatch(setDocumentsLoading(true));
-        try {
-        const response = await fetch('/itogzd/files/documents.json');
-
-        if (!response.ok) {
-            throw new Error('Failed to load documents');
-        }
-
-        const data = (await response.json()) as DocumentItem[];
-
-        const documentsWithSavedPreview = data.map((document) => {
-        const savedDocument = loadSavedDocument(document.id);
-
-        if (!savedDocument?.cells) {
-            return document;
-        }
-
-        const preview = Array.from({ length: 3 }, (_, rowIndex) =>
-            Array.from({ length: 3 }, (_, colIndex) => {
-            const cell = savedDocument.cells[`${rowIndex}:${colIndex}`];
-
-            return cell?.raw ?? '';
-            }),
-        );
-
-        return {
-            ...document,
-            preview,
-            updatedAt: savedDocument.updatedAt
-            ? new Date(savedDocument.updatedAt).toLocaleDateString('ru-RU')
-            : document.updatedAt,
-        };
-        });
-
-        dispatch(setDocuments(documentsWithSavedPreview));
-        } catch (error) {
-        console.error(error);
-        dispatch(setDocuments([]));
-        } finally {
-        dispatch(setDocumentsLoading(false));
-        }
-    }
-    loadDocuments();
+        dispatch(loadDocuments());
     }, [dispatch]);
 
     function getDocumentCells(document: DocumentItem) {
@@ -258,7 +206,40 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
             <button
             className="primaryButton"
             onClick={() => {
-                console.log('create empty spreadsheet');
+                const date = new Date().toLocaleDateString('ru-RU');
+
+                const newDocument = {
+                    id: crypto.randomUUID(),
+                    title: 'Новая таблица',
+                    createdAt: date,
+                    updatedAt: date,
+                    preview: [
+                        ['', '', ''],
+                        ['', '', ''],
+                        ['', '', ''],
+                    ],
+                };
+
+                dispatch(addDocument(newDocument));
+                localStorage.setItem(
+                    `document:${newDocument.id}`,
+                    JSON.stringify({
+                        cells: {},
+                        updatedAt: new Date().toISOString(),
+                    }),
+                );
+
+                const localDocuments = JSON.parse(
+                    localStorage.getItem('documents:list') ?? '[]',
+                );
+
+                localStorage.setItem(
+                    'documents:list',
+                    JSON.stringify([...localDocuments, newDocument]),
+                );
+
+                setEditingId(newDocument.id);
+                setEditingTitle(newDocument.title);
             }}
             >
             + Создать пустую таблицу
@@ -295,11 +276,7 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
             key={document.id}
             className="documentCard"
             onDoubleClick={() => {
-                onOpenDocument({
-                    id: document.id,
-                    title: document.title,
-                    preview: document.preview,
-                });
+                dispatch(loadDocumentById(document.id));
             }}
             >
             <div className="documentIcon">▦</div>

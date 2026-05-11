@@ -3,9 +3,10 @@ import { SpreadsheetGrid } from './SpreadsheetGrid';
 import { ContextMenu } from './ContextMenu';
 import { loadCellsFromPreview as loadCellsFromPreviewAction } from '../../store/slices/spreadsheetSlice';
 import { useEffect, useRef } from 'react';
-import { patchDocument, loadSavedDocument } from '../documents/mockDocumentsApi';
+import { loadSavedDocument } from '../documents/mockDocumentsApi';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { setSaveStatus, setUnsavedChanges } from '../../store/slices/uiSlice';
+import { saveDocument as saveDocumentThunk } from '../../store/slices/documentsSlice';
 
 type SpreadsheetPageProps = {
   documentId: string;
@@ -66,10 +67,13 @@ export function SpreadsheetPage({
     try {
       dispatch(setSaveStatus('saving'));
 
-      await patchDocument(documentId, {
-        cells,
-        updatedAt: new Date().toISOString(),
-      });
+      await dispatch(
+        saveDocumentThunk({
+          documentId,
+          cells,
+          updatedAt: new Date().toISOString(),
+        }),
+      ).unwrap();
 
       dispatch(setSaveStatus('saved'));
       dispatch(setUnsavedChanges(false));
@@ -130,10 +134,13 @@ export function SpreadsheetPage({
       try {
         dispatch(setSaveStatus('saving'));
 
-        await patchDocument(documentId, {
-          cells,
-          updatedAt: new Date().toISOString(),
-        });
+        await dispatch(
+          saveDocumentThunk({
+            documentId,
+            cells,
+            updatedAt: new Date().toISOString(),
+          }),
+        ).unwrap();
 
         dispatch(setSaveStatus('saved'));
         dispatch(setUnsavedChanges(false));
