@@ -1,5 +1,5 @@
-import { SpreadsheetPage } from './features/spreadsheet/SpreadsheetPage';
+import { DocumentsPage  } from './features/spreadsheet/DocumentsPage';
 
 export default function App() {
-  return <SpreadsheetPage />;
+  return <DocumentsPage  />;
 }

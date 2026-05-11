@@ -235,3 +235,161 @@ input {
   background: #e5e7eb;
   margin: 6px 0;
 }
+
+/* Страницца с файлами*/
+.documentsPage {
+  min-height: 100vh;
+  padding: 24px;
+  background: #f4f6fb;
+}
+
+.documentsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #d8dee9;
+  border-radius: 14px;
+}
+
+.documentsHeader h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.documentsHeader p {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.primaryButton {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.documentsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.documentCard {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 14px;
+  padding: 16px;
+  background: white;
+  border: 1px solid #d8dee9;
+  border-radius: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+
+.documentCard:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+.documentIcon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.documentInfo h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.documentInfo p {
+  margin: 3px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.documentActions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.documentActions button,
+.documentActions select {
+  border: 1px solid #cbd5e1;
+  background: white;
+  padding: 7px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.documentActions button:hover,
+.documentActions select:hover {
+  background: #f8fafc;
+}
+
+.documentActions .dangerButton {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.documentCardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.documentCard h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.documentCard p {
+  margin: 3px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.documentActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.documentActions button {
+  border: 1px solid #cbd5e1;
+  background: white;
+  padding: 7px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.documentActions button:hover {
+  background: #f8fafc;
+}
+
+.documentActions .dangerButton {
+  color: #dc2626;
+  border-color: #fecaca;
+}
