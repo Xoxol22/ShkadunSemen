@@ -141,7 +141,7 @@ export function SpreadsheetPage({
       } catch {
         setSaveStatus('error');
       }
-    }, 60000);
+    }, 500);
 
     return () => {
       if (saveTimerRef.current) {
