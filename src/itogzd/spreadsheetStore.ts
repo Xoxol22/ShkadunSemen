@@ -20,9 +20,12 @@ type SpreadsheetState = {
   columnWidths: Record<number, number>;
   rowHeights: Record<number, number>;
   contextMenu: ContextMenuState;
+  saveStatus: 'saved' | 'saving' | 'error';
+  hasUnsavedChanges: boolean;
 };
 
 type SpreadsheetActions = {
+  loadCellsFromPreview: (preview: string[][]) => void;
   setActiveCell: (position: CellPosition, shiftKey?: boolean) => void;
   extendSelection: (position: CellPosition) => void;
   moveActiveCell: (rowDelta: number, colDelta: number, shiftKey?: boolean) => void;
@@ -39,6 +42,8 @@ type SpreadsheetActions = {
   closeContextMenu: () => void;
   fillDemoData: () => void;
   setRows: (rows: number) => void;
+   setSaveStatus: (status: 'saved' | 'saving' | 'error') => void;
+  setUnsavedChanges: (value: boolean) => void;
 };
 
 type Store = SpreadsheetState & SpreadsheetActions;
@@ -130,6 +135,8 @@ state = {
   formulaValue: '',
   columnWidths: {},
   rowHeights: {},
+  saveStatus: 'saved',
+  hasUnsavedChanges: false,
   contextMenu: {
     visible: false,
     x: 0,
@@ -137,6 +144,18 @@ state = {
     row: 0,
     col: 0,
     target: 'cell',
+  },
+
+  setSaveStatus(status) {
+    setState(() => ({
+      saveStatus: status,
+    }));
+  },
+
+  setUnsavedChanges(value) {
+    setState(() => ({
+      hasUnsavedChanges: value,
+    }));
   },
 
   setActiveCell(position, shiftKey = false) {
@@ -213,6 +232,8 @@ state = {
       return {
         cells: recomputeAllCells(nextCells),
         formulaValue: raw,
+        saveStatus: 'saving',
+        hasUnsavedChanges: true,
       };
     });
   },
@@ -232,6 +253,8 @@ state = {
       return {
         formulaValue: value,
         cells: recomputeAllCells(nextCells),
+        saveStatus: 'saving',
+        hasUnsavedChanges: true,
       };
     });
   },
@@ -293,6 +316,30 @@ state = {
   closeContextMenu() {
     setState((current) => ({
       contextMenu: { ...current.contextMenu, visible: false },
+    }));
+  },
+
+  loadCellsFromPreview(preview) {
+    const cells: Record<string, CellData> = {};
+
+    preview.forEach((rowValues, rowIndex) => {
+      rowValues.forEach((value, colIndex) => {
+        if (value !== '') {
+          cells[getCellKey(rowIndex, colIndex)] = computeCell(value, cells);
+        }
+      });
+    });
+
+    setState(() => ({
+      cells: recomputeAllCells(cells),
+      activeCell: { row: 0, col: 0 },
+      selection: {
+        start: { row: 0, col: 0 },
+        end: { row: 0, col: 0 },
+      },
+      formulaValue: preview[0]?.[0] ?? '',
+      saveStatus: 'saved',
+      hasUnsavedChanges: false,
     }));
   },
 

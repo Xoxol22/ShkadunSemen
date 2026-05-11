@@ -1,36 +1,76 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { loadSavedDocument } from '../documents/mockDocumentsApi';
 
-const initialDocuments  = [
-  {
-    id: '1',
-    title: 'Финансовый отчёт',
-    createdAt: '11.05.2026',
-    updatedAt: '11.05.2026',
-    preview: [
-      ['Доход', 'Расход', 'Итог'],
-      ['12000', '4000', '8000'],
-      ['9000', '3000', '6000'],
-    ],
-  },
-  
-  {
-    id: '2',
-    title: 'Учебная таблица',
-    createdAt: '10.05.2026',
-    updatedAt: '11.05.2026',
-    preview: [
-      ['Доход', 'Расход', 'Итог'],
-      ['12000', '4000', '8000'],
-      ['9000', '3000', '6000'],
-    ],
-  },
-];
 
-export function DocumentsPage() {
+type DocumentItem = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  preview: string[][];
+};
 
-    const [documents, setDocuments] = useState(initialDocuments);
+
+type DocumentsPageProps = {
+  onOpenDocument: (document: {
+    id: string;
+    title: string;
+    preview: string[][];
+  }) => void;
+};
+
+export function DocumentsPage({ onOpenDocument }: DocumentsPageProps) {
+
+    const [documents, setDocuments] = useState<DocumentItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
+
+    useEffect(() => {
+    async function loadDocuments() {
+        try {
+        const response = await fetch('/itogzd/files/documents.json');
+
+        if (!response.ok) {
+            throw new Error('Failed to load documents');
+        }
+
+        const data = (await response.json()) as DocumentItem[];
+
+        const documentsWithSavedPreview = data.map((document) => {
+        const savedDocument = loadSavedDocument(document.id);
+
+        if (!savedDocument?.cells) {
+            return document;
+        }
+
+        const preview = Array.from({ length: 3 }, (_, rowIndex) =>
+            Array.from({ length: 3 }, (_, colIndex) => {
+            const cell = savedDocument.cells[`${rowIndex}:${colIndex}`];
+
+            return cell?.raw ?? '';
+            }),
+        );
+
+        return {
+            ...document,
+            preview,
+            updatedAt: savedDocument.updatedAt
+            ? new Date(savedDocument.updatedAt).toLocaleDateString('ru-RU')
+            : document.updatedAt,
+        };
+        });
+
+        setDocuments(documentsWithSavedPreview);
+        } catch (error) {
+        console.error(error);
+        setDocuments([]);
+        } finally {
+        setIsLoading(false);
+        }
+    }
+    loadDocuments();
+    }, []);
 
     function startRename(documentId: string, currentTitle: string) {
     setEditingId(documentId);
@@ -82,7 +122,11 @@ export function DocumentsPage() {
         {
         ...sourceDocument,
         id: crypto.randomUUID(),
-        title: `${sourceDocument.title} — копия`,
+        title: `${sourceDocument.title} — копия ${
+        currentDocuments.filter((document) =>
+            document.title.startsWith(`${sourceDocument.title} — копия`)
+        ).length + 1
+        }`,
         createdAt: date,
         updatedAt: date,
         },
@@ -125,14 +169,22 @@ export function DocumentsPage() {
             <span>Пустая таблица</span>
         </div>
         </section>
+      {isLoading && <p className="documentsHint">Загрузка документов...</p>}
 
+    {!isLoading && documents.length === 0 && (
+    <p className="documentsHint">Документы не найдены</p>
+    )}
       <section className="documentsGrid">
         {documents.map((document) => (
           <article
             key={document.id}
             className="documentCard"
             onDoubleClick={() => {
-                console.log('open document', document.id);
+                onOpenDocument({
+                    id: document.id,
+                    title: document.title,
+                    preview: document.preview,
+                });
             }}
             >
             <div className="documentIcon">▦</div>
@@ -173,7 +225,7 @@ export function DocumentsPage() {
             </div>
 
             <div className="previewTable">
-              {document.preview.map((row, rowIndex) =>
+              {document.preview?.map((row, rowIndex) =>
                 row.map((cell, colIndex) => (
                   <div key={`${rowIndex}:${colIndex}`} className="previewCell">
                     {cell}
