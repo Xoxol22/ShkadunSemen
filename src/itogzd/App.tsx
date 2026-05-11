@@ -1,15 +1,11 @@
-import { useState } from 'react';
 import { DocumentsPage  } from './features/spreadsheet/DocumentsPage';
 import { SpreadsheetPage } from './features/spreadsheet/SpreadsheetPage';
-
-type OpenedDocument = {
-  id: string;
-  title: string;
-  preview: string[][];
-};
+import { useAppDispatch, useAppSelector } from './store/hooks';
+import { setActiveDocument } from './store/slices/documentsSlice';
 
 export default function App() {
- const [openedDocument, setOpenedDocument] = useState<OpenedDocument | null>(null);
+ const dispatch = useAppDispatch();
+const openedDocument = useAppSelector((state) => state.documents.activeDocument);
 
   if (openedDocument) {
     return (
@@ -17,10 +13,10 @@ export default function App() {
         documentId={openedDocument.id}
         documentTitle={openedDocument.title}
         preview={openedDocument.preview}
-        onBack={() => setOpenedDocument(null)}
+        onBack={() => dispatch(setActiveDocument(null))}
       />
     );
   }
 
-  return <DocumentsPage onOpenDocument={setOpenedDocument} />;
+  return <DocumentsPage onOpenDocument={(document) => dispatch(setActiveDocument(document))} />;
 }

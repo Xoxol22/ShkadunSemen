@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { loadSavedDocument } from '../documents/mockDocumentsApi';
 import { exportCellsToCsv, exportCellsToJson, parseCsv } from '../documents/exportImport';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  addDocument,
+  deleteDocument as deleteDocumentAction,
+  renameDocument,
+  setDocuments,
+  setDocumentsLoading,
+  updateDocumentPreview,
+} from '../../store/slices/documentsSlice';
 
 
 type DocumentItem = {
@@ -23,13 +32,17 @@ type DocumentsPageProps = {
 
 export function DocumentsPage({ onOpenDocument }: DocumentsPageProps) {
 
-    const [documents, setDocuments] = useState<DocumentItem[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
 
+    const dispatch = useAppDispatch();
+
+    const documents = useAppSelector((state) => state.documents.items);
+    const isLoading = useAppSelector((state) => state.documents.isLoading);
+
     useEffect(() => {
     async function loadDocuments() {
+        dispatch(setDocumentsLoading(true));
         try {
         const response = await fetch('/itogzd/files/documents.json');
 
@@ -63,16 +76,16 @@ export function DocumentsPage({ onOpenDocument }: DocumentsPageProps) {
         };
         });
 
-        setDocuments(documentsWithSavedPreview);
+        dispatch(setDocuments(documentsWithSavedPreview));
         } catch (error) {
         console.error(error);
-        setDocuments([]);
+        dispatch(setDocuments([]));
         } finally {
-        setIsLoading(false);
+        dispatch(setDocumentsLoading(false));
         }
     }
     loadDocuments();
-    }, []);
+    }, [dispatch]);
 
     function getDocumentCells(document: DocumentItem) {
   const savedDocument = loadSavedDocument(document.id);
@@ -127,32 +140,27 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
         }),
         );
 
-        setDocuments((currentDocuments) => {
-        const exists = currentDocuments.some((document) => document.id === documentId);
+        const exists = documents.some((document) => document.id === documentId);
 
         if (exists) {
-            return currentDocuments.map((document) =>
-            document.id === documentId
-                ? {
-                    ...document,
-                    preview,
-                    updatedAt: date,
-                }
-                : document,
-            );
-        }
-
-        return [
-            ...currentDocuments,
-            {
+        dispatch(
+            updateDocumentPreview({
+            documentId,
+            preview,
+            updatedAt: date,
+            }),
+        );
+        } else {
+        dispatch(
+            addDocument({
             id: documentId,
             title: title ?? 'Импортированная таблица',
             createdAt: date,
             updatedAt: date,
             preview,
-            },
-        ];
-        });
+            }),
+        );
+        }
     };
 
     reader.readAsText(file);
@@ -163,7 +171,7 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
     setEditingTitle(currentTitle);
     }
 
-    function saveRename(documentId: string) {
+        function saveRename(documentId: string) {
     const title = editingTitle.trim();
 
     if (!title) {
@@ -171,16 +179,12 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
         return;
     }
 
-    setDocuments((currentDocuments) =>
-        currentDocuments.map((document) =>
-        document.id === documentId
-            ? {
-                ...document,
-                title,
-                updatedAt: new Date().toLocaleDateString('ru-RU'),
-            }
-            : document,
-        ),
+    dispatch(
+        renameDocument({
+        documentId,
+        title,
+        updatedAt: new Date().toLocaleDateString('ru-RU'),
+        }),
     );
 
     setEditingId(null);
@@ -188,35 +192,33 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
     }
 
     function deleteDocument(documentId: string) {
-    const confirmed = window.confirm('Удалить документ? Это действие нельзя отменить.');
+        const confirmed = window.confirm('Удалить документ? Это действие нельзя отменить.');
 
-    if (!confirmed) return;
+        if (!confirmed) return;
 
-    setDocuments((currentDocuments) =>
-        currentDocuments.filter((document) => document.id !== documentId),
-    );
+        dispatch(deleteDocumentAction(documentId));
     }
 
     function duplicateDocument(documentId: string) {
-    const sourceDocument = documents.find((document) => document.id === documentId);
-    if (!sourceDocument) return;
+        const sourceDocument = documents.find((document) => document.id === documentId);
+        if (!sourceDocument) return;
 
-    const date = new Date().toLocaleDateString('ru-RU');
+        const date = new Date().toLocaleDateString('ru-RU');
 
-    setDocuments((currentDocuments) => [
-        ...currentDocuments,
-        {
-        ...sourceDocument,
-        id: crypto.randomUUID(),
-        title: `${sourceDocument.title} — копия ${
-        currentDocuments.filter((document) =>
+        const copyIndex =
+            documents.filter((document) =>
             document.title.startsWith(`${sourceDocument.title} — копия`)
-        ).length + 1
-        }`,
-        createdAt: date,
-        updatedAt: date,
-        },
-    ]);
+            ).length + 1;
+
+        dispatch(
+            addDocument({
+            ...sourceDocument,
+            id: crypto.randomUUID(),
+            title: `${sourceDocument.title} — копия ${copyIndex}`,
+            createdAt: date,
+            updatedAt: date,
+            }),
+        );
     }
 
   return (

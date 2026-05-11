@@ -17,7 +17,7 @@ export function exportCellsToCsv(cells: Record<string, CellData>) {
     rows.push(values.join(','));
   }
 
-  downloadFile('spreadsheet.csv', rows.join('\n'), 'text/csv;charset=utf-8');
+    downloadFile('spreadsheet.csv', '\uFEFF' + rows.join('\r\n'), 'text/csv;charset=utf-8');
 }
 
 export function exportCellsToJson(cells: Record<string, CellData>) {

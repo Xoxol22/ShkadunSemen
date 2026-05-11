@@ -1,9 +1,11 @@
 import { FormulaBar } from './FormulaBar';
 import { SpreadsheetGrid } from './SpreadsheetGrid';
 import { ContextMenu } from './ContextMenu';
-import { useSpreadsheetStore } from '../../spreadsheetStore';
+import { loadCellsFromPreview as loadCellsFromPreviewAction } from '../../store/slices/spreadsheetSlice';
 import { useEffect, useRef } from 'react';
 import { patchDocument, loadSavedDocument } from '../documents/mockDocumentsApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { setSaveStatus, setUnsavedChanges } from '../../store/slices/uiSlice';
 
 type SpreadsheetPageProps = {
   documentId: string;
@@ -18,18 +20,15 @@ export function SpreadsheetPage({
   preview,
   onBack,
 }: SpreadsheetPageProps) {
-  const fillDemoData = useSpreadsheetStore((state) => state.fillDemoData);
-  const setRows = useSpreadsheetStore((state) => state.setRows);
-  const saveStatus = useSpreadsheetStore((state) => state.saveStatus);
-
-  const cells = useSpreadsheetStore((state) => state.cells);
-  const hasUnsavedChanges = useSpreadsheetStore((state) => state.hasUnsavedChanges);
-  const setSaveStatus = useSpreadsheetStore((state) => state.setSaveStatus);
-  const setUnsavedChanges = useSpreadsheetStore((state) => state.setUnsavedChanges);
-  const loadCellsFromPreview = useSpreadsheetStore((state) => state.loadCellsFromPreview);
 
   const saveTimerRef = useRef<number | null>(null);
   const hasLoadedRef = useRef(false);
+
+  const dispatch = useAppDispatch();
+  const cells = useAppSelector((state) => state.spreadsheet.cells);
+
+  const saveStatus = useAppSelector((state) => state.ui.saveStatus);
+  const hasUnsavedChanges = useAppSelector((state) => state.ui.hasUnsavedChanges);
 
   useEffect(() => {
     if (hasLoadedRef.current) return;
@@ -55,27 +54,27 @@ export function SpreadsheetPage({
         [] as string[][],
       );
 
-      loadCellsFromPreview(previewFromSaved);
+      dispatch(loadCellsFromPreviewAction(previewFromSaved));
     } else {
-      loadCellsFromPreview(preview);
+      dispatch(loadCellsFromPreviewAction(preview));
     }
 
     hasLoadedRef.current = true;
-  }, [documentId, loadCellsFromPreview, preview]);
+  }, [documentId, dispatch, preview]);
 
   async function saveDocument() {
     try {
-      setSaveStatus('saving');
+      dispatch(setSaveStatus('saving'));
 
       await patchDocument(documentId, {
         cells,
         updatedAt: new Date().toISOString(),
       });
 
-      setSaveStatus('saved');
-      setUnsavedChanges(false);
+      dispatch(setSaveStatus('saved'));
+      dispatch(setUnsavedChanges(false));
     } catch {
-      setSaveStatus('error');
+      dispatch(setSaveStatus('error'));
     }
   }
 
@@ -129,17 +128,17 @@ export function SpreadsheetPage({
 
     saveTimerRef.current = window.setTimeout(async () => {
       try {
-        setSaveStatus('saving');
+        dispatch(setSaveStatus('saving'));
 
         await patchDocument(documentId, {
           cells,
           updatedAt: new Date().toISOString(),
         });
 
-        setSaveStatus('saved');
-        setUnsavedChanges(false);
+        dispatch(setSaveStatus('saved'));
+        dispatch(setUnsavedChanges(false));
       } catch {
-        setSaveStatus('error');
+        dispatch(setSaveStatus('error'));
       }
     }, 500);
 
@@ -148,7 +147,7 @@ export function SpreadsheetPage({
         window.clearTimeout(saveTimerRef.current);
       }
     };
-  }, [cells, documentId, hasUnsavedChanges, setSaveStatus, setUnsavedChanges]);
+  }, [cells, documentId, hasUnsavedChanges, dispatch]);
 
   return (
     <div className="page">
@@ -163,9 +162,7 @@ export function SpreadsheetPage({
         </div>
       </div>
 
-      <div className="topPanelActions">
-        <button onClick={fillDemoData}>Demo data</button>
-      </div>
+      <div className="topPanelActions" />
     </div>
 
       <FormulaBar />

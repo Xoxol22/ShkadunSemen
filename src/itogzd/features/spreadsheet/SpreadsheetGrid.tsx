@@ -1,32 +1,40 @@
 import { useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Cell } from './Cell';
 import { getColumnName, DEFAULT_ROW_HEIGHT } from '../../cellUtils';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  getColumnWidth,
-  getRowHeight,
-  useSpreadsheetStore,
-} from '../../spreadsheetStore';
+  moveActiveCell,
+  setActiveCell,
+  setCellRaw,
+  setEditingCell,
+  setColumnWidth,
+  setRowHeight,
+} from '../../store/slices/spreadsheetSlice';
+import { setSaveStatus, setUnsavedChanges, openContextMenu} from '../../store/slices/uiSlice';
 
 const HEADER_WIDTH = 52;
 const HEADER_HEIGHT = 32;
 const OVERSCAN = 8;
+const DEFAULT_COL_WIDTH = 100;
+
+function getColumnWidth(widths: Record<number, number>, col: number) {
+  return widths[col] ?? DEFAULT_COL_WIDTH;
+}
+
+function getRowHeight(heights: Record<number, number>, row: number) {
+  return heights[row] ?? DEFAULT_ROW_HEIGHT;
+}
 
 export function SpreadsheetGrid() {
-  const rows = useSpreadsheetStore((state) => state.rows);
-  const cols = useSpreadsheetStore((state) => state.cols);
-  const activeCell = useSpreadsheetStore((state) => state.activeCell);
-  const editingCell = useSpreadsheetStore((state) => state.editingCell);
+  const dispatch = useAppDispatch();
 
-  const columnWidths = useSpreadsheetStore((state) => state.columnWidths);
-  const rowHeights = useSpreadsheetStore((state) => state.rowHeights);
+  const rows = useAppSelector((state) => state.spreadsheet.rows);
+  const cols = useAppSelector((state) => state.spreadsheet.cols);
+  const activeCell = useAppSelector((state) => state.spreadsheet.activeCell);
+  const editingCell = useAppSelector((state) => state.spreadsheet.editingCell);
 
-  const setColumnWidth = useSpreadsheetStore((state) => state.setColumnWidth);
-  const setRowHeight = useSpreadsheetStore((state) => state.setRowHeight);
-  const moveActiveCell = useSpreadsheetStore((state) => state.moveActiveCell);
-  const setActiveCell = useSpreadsheetStore((state) => state.setActiveCell);
-  const setEditingCell = useSpreadsheetStore((state) => state.setEditingCell);
-  const setCellRaw = useSpreadsheetStore((state) => state.setCellRaw);
-  const openContextMenu = useSpreadsheetStore((state) => state.openContextMenu);
+  const columnWidths = useAppSelector((state) => state.spreadsheet.columnWidths);
+  const rowHeights = useAppSelector((state) => state.spreadsheet.rowHeights);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,7 +110,12 @@ export function SpreadsheetGrid() {
     const startWidth = getColumnWidth(columnWidths, col);
 
     function move(moveEvent: globalThis.MouseEvent) {
-      setColumnWidth(col, startWidth + moveEvent.clientX - startX);
+      dispatch(
+        setColumnWidth({
+          col,
+          width: startWidth + moveEvent.clientX - startX,
+        }),
+      );
     }
 
     function up() {
@@ -122,7 +135,12 @@ export function SpreadsheetGrid() {
     const startHeight = getRowHeight(rowHeights, row);
 
     function move(moveEvent: globalThis.MouseEvent) {
-      setRowHeight(row, startHeight + moveEvent.clientY - startY);
+      dispatch(
+        setRowHeight({
+          row,
+          height: startHeight + moveEvent.clientY - startY,
+        }),
+      );
     }
 
     function up() {
@@ -143,37 +161,37 @@ export function SpreadsheetGrid() {
         if (editingCell) return;
 
         if (!activeCell) {
-          setActiveCell({ row: 0, col: 0 });
+          dispatch(setActiveCell({ position: { row: 0, col: 0 } }));
           return;
         }
 
         if (event.key === 'Enter') {
           event.preventDefault();
-          setEditingCell(activeCell);
+          dispatch(setEditingCell(activeCell));
           return;
         }
 
         if (event.key === 'ArrowUp') {
           event.preventDefault();
-          moveActiveCell(-1, 0, event.shiftKey);
+          dispatch(moveActiveCell({ rowDelta: -1, colDelta: 0, shiftKey: event.shiftKey }));
           return;
         }
 
         if (event.key === 'ArrowDown') {
           event.preventDefault();
-          moveActiveCell(1, 0, event.shiftKey);
+          dispatch(moveActiveCell({ rowDelta: 1, colDelta: 0, shiftKey: event.shiftKey }));
           return;
         }
 
         if (event.key === 'ArrowLeft') {
           event.preventDefault();
-          moveActiveCell(0, -1, event.shiftKey);
+          dispatch(moveActiveCell({ rowDelta: 0, colDelta: -1, shiftKey: event.shiftKey }));
           return;
         }
 
         if (event.key === 'ArrowRight') {
           event.preventDefault();
-          moveActiveCell(0, 1, event.shiftKey);
+          dispatch(moveActiveCell({ rowDelta: 0, colDelta: 1, shiftKey: event.shiftKey }));
           return;
         }
 
@@ -184,8 +202,19 @@ export function SpreadsheetGrid() {
           !event.altKey
         ) {
           event.preventDefault();
-          setCellRaw(activeCell.row, activeCell.col, event.key);
-          setEditingCell(activeCell);
+
+          dispatch(
+            setCellRaw({
+              row: activeCell.row,
+              col: activeCell.col,
+              raw: event.key,
+            }),
+          );
+
+          dispatch(setEditingCell(activeCell));
+
+          dispatch(setSaveStatus('saving'));
+          dispatch(setUnsavedChanges(true));
         }
       }}
       onScroll={(event) => {
@@ -251,14 +280,14 @@ export function SpreadsheetGrid() {
               onContextMenu={(event) => {
                 event.preventDefault();
 
-                openContextMenu({
+                dispatch(openContextMenu({
                   visible: true,
                   x: event.clientX,
                   y: event.clientY,
                   row: 0,
                   col,
                   target: 'col',
-                });
+                }));
               }}
             >
               {getColumnName(col)}

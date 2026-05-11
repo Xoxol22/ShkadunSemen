@@ -1,10 +1,14 @@
-import { useSpreadsheetStore } from '../../spreadsheetStore';
 import { getCellLabel } from '../../cellUtils';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { setSaveStatus, setUnsavedChanges } from '../../store/slices/uiSlice';
+import { setFormulaValue } from '../../store/slices/spreadsheetSlice';
 
 export function FormulaBar() {
-  const activeCell = useSpreadsheetStore((state) => state.activeCell);
-  const formulaValue = useSpreadsheetStore((state) => state.formulaValue);
-  const setFormulaValue = useSpreadsheetStore((state) => state.setFormulaValue);
+
+  const dispatch = useAppDispatch();
+
+  const activeCell = useAppSelector((state) => state.spreadsheet.activeCell);
+  const formulaValue = useAppSelector((state) => state.spreadsheet.formulaValue);
 
   return (
     <div className="formulaBar">
@@ -14,7 +18,12 @@ export function FormulaBar() {
 
       <input
         value={formulaValue}
-        onChange={(event) => setFormulaValue(event.target.value)}
+        onChange={(event) => {
+          dispatch(setFormulaValue(event.target.value));
+
+          dispatch(setSaveStatus('saving'));
+          dispatch(setUnsavedChanges(true));
+        }}
       />
     </div>
   );

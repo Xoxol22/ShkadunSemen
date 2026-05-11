@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CellPosition } from '../../types';
 import { getCellKey, isCellInRange } from '../../cellUtils';
-import { useSpreadsheetStore } from '../../spreadsheetStore';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  extendSelection,
+  setActiveCell,
+  setCellRaw,
+  setEditingCell,
+} from '../../store/slices/spreadsheetSlice';
+import { setSaveStatus, setUnsavedChanges, openContextMenu} from '../../store/slices/uiSlice';
 
 type CellProps = {
   position: CellPosition;
@@ -12,16 +19,12 @@ type CellProps = {
 export function Cell({ position, width, height }: CellProps) {
   const { row, col } = position;
 
-  const cell = useSpreadsheetStore((state) => state.cells[getCellKey(row, col)]);
-  const activeCell = useSpreadsheetStore((state) => state.activeCell);
-  const selection = useSpreadsheetStore((state) => state.selection);
-  const editingCell = useSpreadsheetStore((state) => state.editingCell);
+  const dispatch = useAppDispatch();
 
-  const setActiveCell = useSpreadsheetStore((state) => state.setActiveCell);
-  const extendSelection = useSpreadsheetStore((state) => state.extendSelection);
-  const setEditingCell = useSpreadsheetStore((state) => state.setEditingCell);
-  const setCellRaw = useSpreadsheetStore((state) => state.setCellRaw);
-  const openContextMenu = useSpreadsheetStore((state) => state.openContextMenu);
+  const cell = useAppSelector((state) => state.spreadsheet.cells[getCellKey(row, col)]);
+  const activeCell = useAppSelector((state) => state.spreadsheet.activeCell);
+  const selection = useAppSelector((state) => state.spreadsheet.selection);
+  const editingCell = useAppSelector((state) => state.spreadsheet.editingCell);
 
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -42,7 +45,7 @@ export function Cell({ position, width, height }: CellProps) {
   }, [isEditing]);
 
  function stopEditing() {
-  setEditingCell(null);
+  dispatch(setEditingCell(null));
 
   requestAnimationFrame(() => {
     const grid = document.querySelector<HTMLDivElement>('.gridViewport');
@@ -61,25 +64,25 @@ export function Cell({ position, width, height }: CellProps) {
       style={{ width, height, lineHeight: `${height - 2}px` }}
       onMouseDown={(event) => {
         if (event.button !== 0) return;
-        setActiveCell(position, event.shiftKey);
+        dispatch(setActiveCell({ position, shiftKey: event.shiftKey }));
       }}
       onMouseEnter={(event) => {
         if (event.buttons === 1) {
-          extendSelection(position);
+          dispatch(extendSelection(position));
         }
       }}
-      onDoubleClick={() => setEditingCell(position)}
+      onDoubleClick={() => dispatch(setEditingCell(position))}
       onContextMenu={(event) => {
         event.preventDefault();
 
-        openContextMenu({
+        dispatch(openContextMenu({
           visible: true,
           x: event.clientX,
           y: event.clientY,
           row,
           col,
           target: 'cell',
-        });
+        }));
       }}
     >
       {isEditing ? (
@@ -90,7 +93,9 @@ export function Cell({ position, width, height }: CellProps) {
           onChange={(event) => {
             const value = event.target.value;
             setDraft(value);
-            setCellRaw(row, col, value);
+            dispatch(setCellRaw({ row, col, raw: value }));
+            dispatch(setSaveStatus('saving'));
+            dispatch(setUnsavedChanges(true));
           }}
           onBlur={stopEditing}
           onKeyDown={(event) => {

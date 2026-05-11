@@ -1,28 +1,82 @@
-import { useSpreadsheetStore } from '../../spreadsheetStore';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+
+import {
+	insertRow,
+	deleteRow,
+	insertCol,
+	deleteCol,
+} from '../../store/slices/spreadsheetSlice';
+
+import { closeContextMenu } from '../../store/slices/uiSlice';
 
 export function ContextMenu() {
-  const contextMenu = useSpreadsheetStore((state) => state.contextMenu);
-  const insertRow = useSpreadsheetStore((state) => state.insertRow);
-  const deleteRow = useSpreadsheetStore((state) => state.deleteRow);
-  const insertCol = useSpreadsheetStore((state) => state.insertCol);
-  const deleteCol = useSpreadsheetStore((state) => state.deleteCol);
-  const closeContextMenu = useSpreadsheetStore((state) => state.closeContextMenu);
+	const dispatch = useAppDispatch();
 
-  if (!contextMenu.visible) return null;
+	const contextMenu = useAppSelector((state) => state.ui.contextMenu);
 
-  return (
-    <div
-      className="contextMenu"
-      style={{ left: contextMenu.x, top: contextMenu.y }}
-      onMouseLeave={closeContextMenu}
-    >
-      <button onClick={() => insertRow(contextMenu.row)}>Вставить строку выше</button>
-      <button onClick={() => insertRow(contextMenu.row + 1)}>Вставить строку ниже</button>
-      <button onClick={() => deleteRow(contextMenu.row)}>Удалить строку</button>
-      <div className="contextDivider" />
-      <button onClick={() => insertCol(contextMenu.col)}>Вставить столбец слева</button>
-      <button onClick={() => insertCol(contextMenu.col + 1)}>Вставить столбец справа</button>
-      <button onClick={() => deleteCol(contextMenu.col)}>Удалить столбец</button>
-    </div>
-  );
+	if (!contextMenu.visible) return null;
+
+	return (
+		<div
+			className="contextMenu"
+			style={{ left: contextMenu.x, top: contextMenu.y }}
+			onMouseLeave={() => dispatch(closeContextMenu())}
+		>
+			<button
+				onClick={() => {
+					dispatch(insertRow(contextMenu.row));
+					dispatch(closeContextMenu());
+				}}
+			>
+				Вставить строку выше
+			</button>
+
+			<button
+				onClick={() => {
+					dispatch(insertRow(contextMenu.row + 1));
+					dispatch(closeContextMenu());
+				}}
+			>
+				Вставить строку ниже
+			</button>
+
+			<button
+				onClick={() => {
+					dispatch(deleteRow(contextMenu.row));
+					dispatch(closeContextMenu());
+				}}
+			>
+				Удалить строку
+			</button>
+
+			<div className="contextDivider" />
+
+			<button
+				onClick={() => {
+					dispatch(insertCol(contextMenu.col));
+					dispatch(closeContextMenu());
+				}}
+			>
+				Вставить столбец слева
+			</button>
+
+			<button
+				onClick={() => {
+					dispatch(insertCol(contextMenu.col + 1));
+					dispatch(closeContextMenu());
+				}}
+			>
+				Вставить столбец справа
+			</button>
+
+			<button
+				onClick={() => {
+					dispatch(deleteCol(contextMenu.col));
+					dispatch(closeContextMenu());
+				}}
+			>
+				Удалить столбец
+			</button>
+		</div>
+	);
 }
