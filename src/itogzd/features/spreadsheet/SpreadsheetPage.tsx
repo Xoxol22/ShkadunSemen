@@ -22,7 +22,6 @@ export function SpreadsheetPage({
   onBack,
 }: SpreadsheetPageProps) {
 
-  const saveTimerRef = useRef<number | null>(null);
   const hasLoadedRef = useRef(false);
 
   const dispatch = useAppDispatch();
@@ -122,39 +121,6 @@ export function SpreadsheetPage({
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [hasUnsavedChanges]);
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) return;
-
-    if (saveTimerRef.current) {
-      window.clearTimeout(saveTimerRef.current);
-    }
-
-    saveTimerRef.current = window.setTimeout(async () => {
-      try {
-        dispatch(setSaveStatus('saving'));
-
-        await dispatch(
-          saveDocumentThunk({
-            documentId,
-            cells,
-            updatedAt: new Date().toISOString(),
-          }),
-        ).unwrap();
-
-        dispatch(setSaveStatus('saved'));
-        dispatch(setUnsavedChanges(false));
-      } catch {
-        dispatch(setSaveStatus('error'));
-      }
-    }, 500);
-
-    return () => {
-      if (saveTimerRef.current) {
-        window.clearTimeout(saveTimerRef.current);
-      }
-    };
-  }, [cells, documentId, hasUnsavedChanges, dispatch]);
 
   return (
     <div className="page">
