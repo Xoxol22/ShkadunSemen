@@ -262,7 +262,6 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
             </div>
             </div>
 
-            <span>Пустая таблица</span>
         </div>
         </section>
       {isLoading && <p className="documentsHint">Загрузка документов...</p>}
