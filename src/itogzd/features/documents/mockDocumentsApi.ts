@@ -5,7 +5,28 @@ type PatchDocumentPayload = {
   updatedAt: string;
 };
 
+export function getDocumentsListKey(userId: string) {
+  return `documents:list:${userId}`;
+}
+
+export function getDocumentStorageKey(userId: string, documentId: string) {
+  return `document:${userId}:${documentId}`;
+}
+
+export function loadSavedDocument(documentId: string, userId: string) {
+  const rawDocument = localStorage.getItem(
+    getDocumentStorageKey(userId, documentId),
+  );
+
+  if (!rawDocument) {
+    return null;
+  }
+
+  return JSON.parse(rawDocument);
+}
+
 export async function patchDocument(
+  userId: string,
   documentId: string,
   payload: PatchDocumentPayload,
 ) {
@@ -15,12 +36,14 @@ export async function patchDocument(
     setTimeout(resolve, 300);
   });
 
-  const raw = localStorage.getItem(`document:${documentId}`);
+  const documentStorageKey = getDocumentStorageKey(userId, documentId);
+
+  const raw = localStorage.getItem(documentStorageKey);
 
   const current = raw ? JSON.parse(raw) : {};
 
   localStorage.setItem(
-    `document:${documentId}`,
+    documentStorageKey,
     JSON.stringify({
       ...current,
       cells: payload.cells,
@@ -29,12 +52,4 @@ export async function patchDocument(
   );
 
   return { success: true };
-}
-
-export function loadSavedDocument(documentId: string) {
-  const raw = localStorage.getItem(`document:${documentId}`);
-
-  if (!raw) return null;
-
-  return JSON.parse(raw);
 }

@@ -1,6 +1,9 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { loadSavedDocument } from '../../features/documents/mockDocumentsApi';
-import { patchDocument } from '../../features/documents/mockDocumentsApi';
+import {
+  getDocumentsListKey,
+  loadSavedDocument,
+  patchDocument,
+} from '../../features/documents/mockDocumentsApi';
 import type { CellData } from '../../types';
 
 export type DocumentItem = {
@@ -29,31 +32,34 @@ const initialState: DocumentsState = {
   activeDocument: null,
 };
 
-export const loadDocuments = createAsyncThunk(
+export const loadDocuments = createAsyncThunk<DocumentItem[], string>(
 	'documents/loadDocuments',
-	async () => {
-		const response = await fetch('/itogzd/files/documents.json');
+	async (userId) => {
+        const documentsListKey = getDocumentsListKey(userId);
 
-		if (!response.ok) {
-			throw new Error('Failed to load documents');
-		}
+        const localDocumentsRaw = localStorage.getItem(documentsListKey);
 
-		const data = (await response.json()) as DocumentItem[];
+        if (!localDocumentsRaw) {
+            const response = await fetch('/itogzd/files/documents.json');
 
-        const localDocuments = JSON.parse(
-            localStorage.getItem('documents:list') ?? '[]',
-        ) as DocumentItem[];
+            if (!response.ok) {
+                throw new Error('Failed to load documents');
+            }
 
-        const allDocuments = [
-            ...data,
-            ...localDocuments.filter(
-                (localDocument) =>
-                    !data.some((document) => document.id === localDocument.id),
-            ),
-        ];
+            const defaultDocuments = (await response.json()) as DocumentItem[];
 
-		return allDocuments.map((document) => { 
-			const savedDocument = loadSavedDocument(document.id);
+            localStorage.setItem(
+                documentsListKey,
+                JSON.stringify(defaultDocuments),
+            );
+
+            return defaultDocuments;
+        }
+
+        const localDocuments = JSON.parse(localDocumentsRaw) as DocumentItem[];
+
+		return localDocuments.map((document) => {
+			const savedDocument = loadSavedDocument(document.id, userId);
 
 			if (!savedDocument?.cells) {
 				return document;
@@ -81,11 +87,12 @@ export const loadDocuments = createAsyncThunk(
 export const saveDocument = createAsyncThunk(
 	'documents/saveDocument',
 	async (payload: {
+        userId: string;
 		documentId: string;
 		cells: Record<string, CellData>;
 		updatedAt: string;
 	}) => {
-		await patchDocument(payload.documentId, {
+		await patchDocument(payload.userId, payload.documentId, {
 			cells: payload.cells,
 			updatedAt: payload.updatedAt,
 		});
@@ -178,6 +185,24 @@ const documentsSlice = createSlice({
             .addCase(loadDocuments.rejected, (state) => {
                 state.items = [];
                 state.isLoading = false;
+            })
+            .addCase(saveDocument.fulfilled, (state, action) => {
+                const document = state.items.find(
+                    (item) => item.id === action.payload.documentId,
+                );
+
+                if (!document) return;
+
+                document.updatedAt = new Date(action.payload.updatedAt)
+                    .toLocaleDateString('ru-RU');
+
+                document.preview = Array.from({ length: 3 }, (_, rowIndex) =>
+                    Array.from({ length: 3 }, (_, colIndex) => {
+                        const cell = action.payload.cells[`${rowIndex}:${colIndex}`];
+
+                        return cell?.raw ?? '';
+                    }),
+                );
             })
             .addCase(loadDocumentById.fulfilled, (state, action) => {
 	            state.activeDocument = action.payload;

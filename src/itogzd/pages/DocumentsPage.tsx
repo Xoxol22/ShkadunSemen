@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { loadSavedDocument } from '../features/documents/mockDocumentsApi';
+import {
+  getDocumentStorageKey,
+  getDocumentsListKey,
+  loadSavedDocument,
+} from '../features/documents/mockDocumentsApi';
 import { exportCellsToCsv, exportCellsToJson, parseCsv } from '../features/documents/exportImport';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useNavigate } from 'react-router-dom';
@@ -30,97 +34,138 @@ export function DocumentsPage() {
 
     const documents = useAppSelector((state) => state.documents.items);
     const isLoading = useAppSelector((state) => state.documents.isLoading);
+    const currentUser = useAppSelector((state) => state.auth.user);
+    const userId = currentUser?.id;
+
     const navigate = useNavigate();
 
     useEffect(() => {
-        dispatch(loadDocuments());
-    }, [dispatch]);
+        if (!userId) return;
+
+        dispatch(loadDocuments(userId));
+    }, [dispatch, userId]);
 
     function getDocumentCells(document: DocumentItem) {
-  const savedDocument = loadSavedDocument(document.id);
+        if (!userId) {
+            return {};
+        }
 
-  if (savedDocument?.cells) {
-    return savedDocument.cells;
-  }
+        const savedDocument = loadSavedDocument(document.id, userId);
 
-  const cells: Record<string, { raw: string; computed: string; type: 'string' }> = {};
-
-  document.preview.forEach((row, rowIndex) => {
-    row.forEach((value, colIndex) => {
-      cells[`${rowIndex}:${colIndex}`] = {
-        raw: value,
-        computed: value,
-        type: 'string',
-      };
-    });
-  });
-
-  return cells;
-}
-
-function importCsvToDocument(documentId: string, file: File, title?: string) {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-        const text = String(reader.result ?? '');
-        const rows = parseCsv(text);
-
-        const date = new Date().toLocaleDateString('ru-RU');
-
-        const preview = rows.slice(0, 3).map((row) => row.slice(0, 3));
+        if (savedDocument?.cells) {
+            return savedDocument.cells;
+        }
 
         const cells: Record<string, { raw: string; computed: string; type: 'string' }> = {};
 
-        rows.forEach((row, rowIndex) => {
-        row.forEach((value, colIndex) => {
-            cells[`${rowIndex}:${colIndex}`] = {
-            raw: value,
-            computed: value,
-            type: 'string',
+        document.preview.forEach((row, rowIndex) => {
+            row.forEach((value, colIndex) => {
+                cells[`${rowIndex}:${colIndex}`] = {
+                    raw: value,
+                    computed: value,
+                    type: 'string',
+                };
+            });
+        });
+
+        return cells;
+    }
+
+    function importCsvToDocument(documentId: string, file: File, title?: string) {
+        if (!userId) return;
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            const text = String(reader.result ?? '');
+            const rows = parseCsv(text);
+
+            const date = new Date().toLocaleDateString('ru-RU');
+
+            const preview = rows.slice(0, 3).map((row) => row.slice(0, 3));
+
+            const cells: Record<string, { raw: string; computed: string; type: 'string' }> = {};
+
+            rows.forEach((row, rowIndex) => {
+                row.forEach((value, colIndex) => {
+                    cells[`${rowIndex}:${colIndex}`] = {
+                        raw: value,
+                        computed: value,
+                        type: 'string',
+                    };
+                });
+            });
+
+            localStorage.setItem(
+                getDocumentStorageKey(userId, documentId),
+                JSON.stringify({
+                    cells,
+                    updatedAt: new Date().toISOString(),
+                }),
+            );
+
+            const documentsListKey = getDocumentsListKey(userId);
+
+            const localDocuments = JSON.parse(
+                localStorage.getItem(documentsListKey) ?? '[]',
+            ) as DocumentItem[];
+
+            const exists = documents.some((document) => document.id === documentId);
+
+            if (exists) {
+                dispatch(
+                    updateDocumentPreview({
+                        documentId,
+                        preview,
+                        updatedAt: date,
+                    }),
+                );
+
+                localStorage.setItem(
+                    documentsListKey,
+                    JSON.stringify(
+                        localDocuments.map((document) =>
+                            document.id === documentId
+                                ? {
+                                    ...document,
+                                    preview,
+                                    updatedAt: date,
+                                }
+                                : document,
+                        ),
+                    ),
+                );
+
+                return;
+            }
+
+            const newDocument: DocumentItem = {
+                id: documentId,
+                title: title ?? 'Импортированная таблица',
+                createdAt: date,
+                updatedAt: date,
+                preview,
             };
-        });
-        });
 
-        localStorage.setItem(
-        `document:${documentId}`,
-        JSON.stringify({
-            cells,
-            updatedAt: new Date().toISOString(),
-        }),
-        );
+            dispatch(addDocument(newDocument));
 
-        const exists = documents.some((document) => document.id === documentId);
+            localStorage.setItem(
+                documentsListKey,
+                JSON.stringify([...localDocuments, newDocument]),
+            );
+        };
 
-        if (exists) {
-        dispatch(
-            updateDocumentPreview({
-            documentId,
-            preview,
-            updatedAt: date,
-            }),
-        );
-        } else {
-        dispatch(
-            addDocument({
-            id: documentId,
-            title: title ?? 'Импортированная таблица',
-            createdAt: date,
-            updatedAt: date,
-            preview,
-            }),
-        );
-        }
-    };
-
-    reader.readAsText(file);
+        reader.readAsText(file);
     }
 
     function startRename(documentId: string, currentTitle: string) {
-    setEditingId(documentId);
-    setEditingTitle(currentTitle);
+        setEditingId(documentId);
+        setEditingTitle(currentTitle);
     }
 
     function saveRename(documentId: string) {
+        if (!userId) return;
+
         const title = editingTitle.trim();
 
         if (!title) {
@@ -133,28 +178,32 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
 
         dispatch(
             renameDocument({
-            documentId,
-            title,
-            updatedAt,
+                documentId,
+                title,
+                updatedAt,
             }),
         );
 
+        const documentsListKey = getDocumentsListKey(userId);
+
         const localDocuments = JSON.parse(
-            localStorage.getItem('documents:list') ?? '[]',
+            localStorage.getItem(documentsListKey) ?? '[]',
         ) as DocumentItem[];
 
+        const documentsForUpdate = localDocuments.length > 0 ? localDocuments : documents;
+
         localStorage.setItem(
-            'documents:list',
+            documentsListKey,
             JSON.stringify(
-            localDocuments.map((document) =>
-                document.id === documentId
-                ? {
-                    ...document,
-                    title,
-                    updatedAt,
-                    }
-                : document,
-            ),
+                documentsForUpdate.map((document) =>
+                    document.id === documentId
+                        ? {
+                            ...document,
+                            title,
+                            updatedAt,
+                        }
+                        : document,
+                ),
             ),
         );
 
@@ -163,16 +212,20 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
     }
 
     function deleteDocument(documentId: string) {
+        if (!userId) return;
+
         const confirmed = window.confirm('Удалить документ? Это действие нельзя отменить.');
 
         if (!confirmed) return;
 
         dispatch(deleteDocumentAction(documentId));
 
-        localStorage.removeItem(`document:${documentId}`);
+        localStorage.removeItem(getDocumentStorageKey(userId, documentId));
+
+        const documentsListKey = getDocumentsListKey(userId);
 
         const localDocuments = JSON.parse(
-            localStorage.getItem('documents:list') ?? '[]',
+            localStorage.getItem(documentsListKey) ?? '[]',
         ) as DocumentItem[];
 
         const updatedLocalDocuments = localDocuments.filter(
@@ -180,13 +233,16 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
         );
 
         localStorage.setItem(
-            'documents:list',
+            documentsListKey,
             JSON.stringify(updatedLocalDocuments),
         );
-        }
+    }
 
     function duplicateDocument(documentId: string) {
+        if (!userId) return;
+
         const sourceDocument = documents.find((document) => document.id === documentId);
+
         if (!sourceDocument) return;
 
         const date = new Date().toLocaleDateString('ru-RU');
@@ -194,10 +250,10 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
 
         const copyIndex =
             documents.filter((document) =>
-            document.title.startsWith(`${sourceDocument.title} — копия`),
+                document.title.startsWith(`${sourceDocument.title} — копия`),
             ).length + 1;
 
-        const copiedDocument = {
+        const copiedDocument: DocumentItem = {
             ...sourceDocument,
             id: newDocumentId,
             title: `${sourceDocument.title} — копия ${copyIndex}`,
@@ -207,25 +263,27 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
 
         dispatch(addDocument(copiedDocument));
 
-        const sourceSavedDocument = loadSavedDocument(sourceDocument.id);
+        const sourceSavedDocument = loadSavedDocument(sourceDocument.id, userId);
 
         localStorage.setItem(
-            `document:${newDocumentId}`,
+            getDocumentStorageKey(userId, newDocumentId),
             JSON.stringify({
-            cells: sourceSavedDocument?.cells ?? getDocumentCells(sourceDocument),
-            updatedAt: new Date().toISOString(),
+                cells: sourceSavedDocument?.cells ?? getDocumentCells(sourceDocument),
+                updatedAt: new Date().toISOString(),
             }),
         );
 
+        const documentsListKey = getDocumentsListKey(userId);
+
         const localDocuments = JSON.parse(
-            localStorage.getItem('documents:list') ?? '[]',
+            localStorage.getItem(documentsListKey) ?? '[]',
         ) as DocumentItem[];
 
         localStorage.setItem(
-            'documents:list',
+            documentsListKey,
             JSON.stringify([...localDocuments, copiedDocument]),
         );
-        }
+    }
 
   return (
     <div className="documentsPage">
@@ -264,9 +322,11 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
             <button
             className="primaryButton"
             onClick={() => {
+                if (!userId) return;
+
                 const date = new Date().toLocaleDateString('ru-RU');
 
-                const newDocument = {
+                const newDocument: DocumentItem = {
                     id: crypto.randomUUID(),
                     title: 'Новая таблица',
                     createdAt: date,
@@ -279,20 +339,23 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
                 };
 
                 dispatch(addDocument(newDocument));
+
                 localStorage.setItem(
-                    `document:${newDocument.id}`,
+                    getDocumentStorageKey(userId, newDocument.id),
                     JSON.stringify({
                         cells: {},
                         updatedAt: new Date().toISOString(),
                     }),
                 );
 
+                const documentsListKey = getDocumentsListKey(userId);
+
                 const localDocuments = JSON.parse(
-                    localStorage.getItem('documents:list') ?? '[]',
-                );
+                    localStorage.getItem(documentsListKey) ?? '[]',
+                ) as DocumentItem[];
 
                 localStorage.setItem(
-                    'documents:list',
+                    documentsListKey,
                     JSON.stringify([...localDocuments, newDocument]),
                 );
 

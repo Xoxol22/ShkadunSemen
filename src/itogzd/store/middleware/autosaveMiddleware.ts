@@ -30,24 +30,26 @@ export const autosaveMiddleware: Middleware = (store) => (next) => (action) => {
 		const state = store.getState() as RootState;
 
 		const activeDocument = state.documents.activeDocument;
+		const userId = state.auth.user?.id;
 
-		if (!activeDocument) return;
+		if (!activeDocument || !userId) return;
 
 		dispatch(
-            saveDocument({
-                documentId: activeDocument.id,
-                cells: state.spreadsheet.cells,
-                updatedAt: new Date().toISOString(),
-            }),
-        )
-            .unwrap()
-            .then(() => {
-                dispatch(setSaveStatus('saved'));
-                dispatch(setUnsavedChanges(false));
-            })
-            .catch(() => {
-                dispatch(setSaveStatus('error'));
-            });
+			saveDocument({
+				userId,
+				documentId: activeDocument.id,
+				cells: state.spreadsheet.cells,
+				updatedAt: new Date().toISOString(),
+			}),
+		)
+			.unwrap()
+			.then(() => {
+				dispatch(setSaveStatus('saved'));
+				dispatch(setUnsavedChanges(false));
+			})
+			.catch(() => {
+				dispatch(setSaveStatus('error'));
+			});
 	}, 500);
 
 	return result;

@@ -6,41 +6,66 @@ import { useEffect, useRef } from 'react';
 import { loadSavedDocument } from '../features/documents/mockDocumentsApi';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSaveStatus, setUnsavedChanges } from '../store/slices/uiSlice';
-import { saveDocument as saveDocumentThunk } from '../store/slices/documentsSlice';
+import {
+  loadDocuments,
+  saveDocument as saveDocumentThunk,
+  setActiveDocument,
+} from '../store/slices/documentsSlice';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { loadDocuments } from '../store/slices/documentsSlice';
+
 
 export function SpreadsheetPage() {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
 
+  const dispatch = useAppDispatch();
+
   const documents = useAppSelector((state) => state.documents.items);
   const isLoading = useAppSelector((state) => state.documents.isLoading);
 
-  const currentDocument = documents.find(
-    (document) => document.id === documentId,
-  );
-
-  const loadedDocumentIdRef = useRef<string | null>(null);
-
-  const dispatch = useAppDispatch();
   const cells = useAppSelector((state) => state.spreadsheet.cells);
 
   const saveStatus = useAppSelector((state) => state.ui.saveStatus);
   const hasUnsavedChanges = useAppSelector((state) => state.ui.hasUnsavedChanges);
 
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const userId = currentUser?.id;
+
+  const currentDocument = documents.find(
+    (document) => document.id === documentId,
+  );
   useEffect(() => {
-    if (documents.length === 0) {
-      dispatch(loadDocuments());
-    }
-  }, [dispatch, documents.length]);
+    if (!currentDocument) return;
+
+    dispatch(
+      setActiveDocument({
+        id: currentDocument.id,
+        title: currentDocument.title,
+        preview: currentDocument.preview,
+      }),
+    );
+
+    return () => {
+      dispatch(setActiveDocument(null));
+    };
+  }, [currentDocument, dispatch]);
+
+  const loadedDocumentKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!documentId || !currentDocument) return;
+    if (!userId) return;
 
-    if (loadedDocumentIdRef.current === documentId) return;
+    dispatch(loadDocuments(userId));
+  }, [dispatch, userId]);
 
-    const savedDocument = loadSavedDocument(documentId);
+  useEffect(() => {
+    if (!documentId || !userId || !currentDocument) return;
+
+    const loadedDocumentKey = `${userId}:${documentId}`;
+
+    if (loadedDocumentKeyRef.current === loadedDocumentKey) return;
+
+    const savedDocument = loadSavedDocument(documentId, userId);
 
     if (savedDocument?.cells) {
       const previewFromSaved = Object.entries(savedDocument.cells).reduce(
@@ -66,17 +91,18 @@ export function SpreadsheetPage() {
       dispatch(loadCellsFromPreviewAction(currentDocument.preview));
     }
 
-    loadedDocumentIdRef.current = documentId;
-  }, [currentDocument, dispatch, documentId]);
+    loadedDocumentKeyRef.current = loadedDocumentKey;
+  }, [currentDocument, dispatch, documentId, userId]);
 
   async function saveDocument() {
-    if (!documentId) return;
-    
+    if (!documentId || !userId) return;
+
     try {
       dispatch(setSaveStatus('saving'));
 
       await dispatch(
         saveDocumentThunk({
+          userId,
           documentId,
           cells,
           updatedAt: new Date().toISOString(),
@@ -92,9 +118,11 @@ export function SpreadsheetPage() {
 
   useEffect(() => {
     function handleSaveShortcut(event: KeyboardEvent) {
+      const key = event.key?.toLowerCase() ?? '';
+
       const isSaveShortcut =
         (event.ctrlKey || event.metaKey) &&
-        (event.key.toLowerCase() === 's' || event.code === 'KeyS');
+        (key === 's' || event.code === 'KeyS');
 
       if (!isSaveShortcut) return;
 
@@ -114,7 +142,7 @@ export function SpreadsheetPage() {
         capture: true,
       });
     };
-  }, [cells, documentId, dispatch]);
+  }, [cells, documentId, dispatch, userId]);
 
   useEffect(() => {
     function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -131,11 +159,15 @@ export function SpreadsheetPage() {
     };
   }, [hasUnsavedChanges]);
 
+  if (!userId) {
+    return <Navigate to="/login" replace />;
+  }
+
   if (!documentId) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (isLoading || documents.length === 0) {
+  if (isLoading) {
     return <div className="page">Загрузка документа...</div>;
   }
 
