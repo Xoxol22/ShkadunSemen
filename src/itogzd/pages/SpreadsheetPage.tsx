@@ -1,28 +1,27 @@
-import { FormulaBar } from './FormulaBar';
-import { SpreadsheetGrid } from './SpreadsheetGrid';
-import { ContextMenu } from './ContextMenu';
-import { loadCellsFromPreview as loadCellsFromPreviewAction } from '../../store/slices/spreadsheetSlice';
+import { FormulaBar } from '../features/spreadsheet/FormulaBar';
+import { SpreadsheetGrid } from '../features/spreadsheet/SpreadsheetGrid';
+import { ContextMenu } from '../features/spreadsheet/ContextMenu';
+import { loadCellsFromPreview as loadCellsFromPreviewAction } from '../store/slices/spreadsheetSlice';
 import { useEffect, useRef } from 'react';
-import { loadSavedDocument } from '../documents/mockDocumentsApi';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { setSaveStatus, setUnsavedChanges } from '../../store/slices/uiSlice';
-import { saveDocument as saveDocumentThunk } from '../../store/slices/documentsSlice';
+import { loadSavedDocument } from '../features/documents/mockDocumentsApi';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { setSaveStatus, setUnsavedChanges } from '../store/slices/uiSlice';
+import { saveDocument as saveDocumentThunk } from '../store/slices/documentsSlice';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { loadDocuments } from '../store/slices/documentsSlice';
 
-type SpreadsheetPageProps = {
-  documentId: string;
-  documentTitle: string;
-  preview: string[][];
-  onBack: () => void;
-};
+export function SpreadsheetPage() {
+  const { documentId } = useParams<{ documentId: string }>();
+  const navigate = useNavigate();
 
-export function SpreadsheetPage({
-  documentId,
-  documentTitle,
-  preview,
-  onBack,
-}: SpreadsheetPageProps) {
+  const documents = useAppSelector((state) => state.documents.items);
+  const isLoading = useAppSelector((state) => state.documents.isLoading);
 
-  const hasLoadedRef = useRef(false);
+  const currentDocument = documents.find(
+    (document) => document.id === documentId,
+  );
+
+  const loadedDocumentIdRef = useRef<string | null>(null);
 
   const dispatch = useAppDispatch();
   const cells = useAppSelector((state) => state.spreadsheet.cells);
@@ -31,7 +30,15 @@ export function SpreadsheetPage({
   const hasUnsavedChanges = useAppSelector((state) => state.ui.hasUnsavedChanges);
 
   useEffect(() => {
-    if (hasLoadedRef.current) return;
+    if (documents.length === 0) {
+      dispatch(loadDocuments());
+    }
+  }, [dispatch, documents.length]);
+
+  useEffect(() => {
+    if (!documentId || !currentDocument) return;
+
+    if (loadedDocumentIdRef.current === documentId) return;
 
     const savedDocument = loadSavedDocument(documentId);
 
@@ -56,13 +63,15 @@ export function SpreadsheetPage({
 
       dispatch(loadCellsFromPreviewAction(previewFromSaved));
     } else {
-      dispatch(loadCellsFromPreviewAction(preview));
+      dispatch(loadCellsFromPreviewAction(currentDocument.preview));
     }
 
-    hasLoadedRef.current = true;
-  }, [documentId, dispatch, preview]);
+    loadedDocumentIdRef.current = documentId;
+  }, [currentDocument, dispatch, documentId]);
 
   async function saveDocument() {
+    if (!documentId) return;
+    
     try {
       dispatch(setSaveStatus('saving'));
 
@@ -105,7 +114,7 @@ export function SpreadsheetPage({
         capture: true,
       });
     };
-  }, [cells, documentId]);
+  }, [cells, documentId, dispatch]);
 
   useEffect(() => {
     function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -122,16 +131,28 @@ export function SpreadsheetPage({
     };
   }, [hasUnsavedChanges]);
 
+  if (!documentId) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (isLoading || documents.length === 0) {
+    return <div className="page">Загрузка документа...</div>;
+  }
+
+  if (!currentDocument) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="page">
         <div className="topPanel">
       <div className="topPanelLeft">
-        <button className="backButton" onClick={onBack}>
+        <button className="backButton" onClick={() => navigate('/dashboard')}>
           ←
         </button>
 
         <div className="documentTitle">
-          {documentTitle}
+          {currentDocument.title}
         </div>
       </div>
 

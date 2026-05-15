@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { loadSavedDocument } from '../documents/mockDocumentsApi';
-import { exportCellsToCsv, exportCellsToJson, parseCsv } from '../documents/exportImport';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { loadSavedDocument } from '../features/documents/mockDocumentsApi';
+import { exportCellsToCsv, exportCellsToJson, parseCsv } from '../features/documents/exportImport';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useNavigate } from 'react-router-dom';
 import {
   addDocument,
   deleteDocument as deleteDocumentAction,
   renameDocument,
   loadDocuments,
   updateDocumentPreview,
-  loadDocumentById,
-} from '../../store/slices/documentsSlice';
+} from '../store/slices/documentsSlice';
 
 
 type DocumentItem = {
@@ -30,6 +30,7 @@ export function DocumentsPage() {
 
     const documents = useAppSelector((state) => state.documents.items);
     const isLoading = useAppSelector((state) => state.documents.isLoading);
+    const navigate = useNavigate();
 
     useEffect(() => {
         dispatch(loadDocuments());
@@ -119,24 +120,46 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
     setEditingTitle(currentTitle);
     }
 
-        function saveRename(documentId: string) {
-    const title = editingTitle.trim();
+    function saveRename(documentId: string) {
+        const title = editingTitle.trim();
 
-    if (!title) {
+        if (!title) {
+            setEditingId(null);
+            setEditingTitle('');
+            return;
+        }
+
+        const updatedAt = new Date().toLocaleDateString('ru-RU');
+
+        dispatch(
+            renameDocument({
+            documentId,
+            title,
+            updatedAt,
+            }),
+        );
+
+        const localDocuments = JSON.parse(
+            localStorage.getItem('documents:list') ?? '[]',
+        ) as DocumentItem[];
+
+        localStorage.setItem(
+            'documents:list',
+            JSON.stringify(
+            localDocuments.map((document) =>
+                document.id === documentId
+                ? {
+                    ...document,
+                    title,
+                    updatedAt,
+                    }
+                : document,
+            ),
+            ),
+        );
+
         setEditingId(null);
-        return;
-    }
-
-    dispatch(
-        renameDocument({
-        documentId,
-        title,
-        updatedAt: new Date().toLocaleDateString('ru-RU'),
-        }),
-    );
-
-    setEditingId(null);
-    setEditingTitle('');
+        setEditingTitle('');
     }
 
     function deleteDocument(documentId: string) {
@@ -145,29 +168,64 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
         if (!confirmed) return;
 
         dispatch(deleteDocumentAction(documentId));
-    }
+
+        localStorage.removeItem(`document:${documentId}`);
+
+        const localDocuments = JSON.parse(
+            localStorage.getItem('documents:list') ?? '[]',
+        ) as DocumentItem[];
+
+        const updatedLocalDocuments = localDocuments.filter(
+            (document) => document.id !== documentId,
+        );
+
+        localStorage.setItem(
+            'documents:list',
+            JSON.stringify(updatedLocalDocuments),
+        );
+        }
 
     function duplicateDocument(documentId: string) {
         const sourceDocument = documents.find((document) => document.id === documentId);
         if (!sourceDocument) return;
 
         const date = new Date().toLocaleDateString('ru-RU');
+        const newDocumentId = crypto.randomUUID();
 
         const copyIndex =
             documents.filter((document) =>
-            document.title.startsWith(`${sourceDocument.title} — копия`)
+            document.title.startsWith(`${sourceDocument.title} — копия`),
             ).length + 1;
 
-        dispatch(
-            addDocument({
+        const copiedDocument = {
             ...sourceDocument,
-            id: crypto.randomUUID(),
+            id: newDocumentId,
             title: `${sourceDocument.title} — копия ${copyIndex}`,
             createdAt: date,
             updatedAt: date,
+        };
+
+        dispatch(addDocument(copiedDocument));
+
+        const sourceSavedDocument = loadSavedDocument(sourceDocument.id);
+
+        localStorage.setItem(
+            `document:${newDocumentId}`,
+            JSON.stringify({
+            cells: sourceSavedDocument?.cells ?? getDocumentCells(sourceDocument),
+            updatedAt: new Date().toISOString(),
             }),
         );
-    }
+
+        const localDocuments = JSON.parse(
+            localStorage.getItem('documents:list') ?? '[]',
+        ) as DocumentItem[];
+
+        localStorage.setItem(
+            'documents:list',
+            JSON.stringify([...localDocuments, copiedDocument]),
+        );
+        }
 
   return (
     <div className="documentsPage">
@@ -247,23 +305,6 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
         </div>
       </header>
 
-      <section className="newDocumentSection">
-        <div
-            className="newDocumentCard"
-            onDoubleClick={() => {
-            console.log('create empty spreadsheet');
-            }}
-        >
-            <div className="newDocumentPreview">
-            <div className="miniGrid">
-                {Array.from({ length: 28 }).map((_, index) => (
-                <div key={index} className="miniCell" />
-                ))}
-            </div>
-            </div>
-
-        </div>
-        </section>
       {isLoading && <p className="documentsHint">Загрузка документов...</p>}
 
     {!isLoading && documents.length === 0 && (
@@ -275,7 +316,7 @@ function importCsvToDocument(documentId: string, file: File, title?: string) {
             key={document.id}
             className="documentCard"
             onDoubleClick={() => {
-                dispatch(loadDocumentById(document.id));
+                navigate(`/documents/${document.id}`);
             }}
             >
             <div className="documentIcon">▦</div>
