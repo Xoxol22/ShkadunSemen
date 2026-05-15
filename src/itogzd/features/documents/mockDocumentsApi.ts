@@ -53,3 +53,54 @@ export async function patchDocument(
 
   return { success: true };
 }
+
+export type DocumentAccessStatus = 'allowed' | 'forbidden' | 'not_found';
+
+function readDocumentIdsFromList(storageKey: string) {
+  try {
+    const rawDocuments = localStorage.getItem(storageKey);
+
+    if (!rawDocuments) {
+      return [];
+    }
+
+    const documents = JSON.parse(rawDocuments) as Array<{ id?: unknown }>;
+
+    return documents
+      .map((document) => document.id)
+      .filter((id): id is string => typeof id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+export function getDocumentAccessStatus(
+  userId: string,
+  documentId: string,
+): DocumentAccessStatus {
+  const currentUserDocumentsKey = getDocumentsListKey(userId);
+
+  const currentUserDocumentIds = readDocumentIdsFromList(
+    currentUserDocumentsKey,
+  );
+
+  if (currentUserDocumentIds.includes(documentId)) {
+    return 'allowed';
+  }
+
+  const documentExistsInAnotherAccount = Object.keys(localStorage)
+    .filter(
+      (key) =>
+        key.startsWith('documents:list:') &&
+        key !== currentUserDocumentsKey,
+    )
+    .some((key) => readDocumentIdsFromList(key).includes(documentId));
+
+  if (documentExistsInAnotherAccount) {
+    console.warn(`GET /documents/${documentId} -> 403 Forbidden`);
+
+    return 'forbidden';
+  }
+
+  return 'not_found';
+}

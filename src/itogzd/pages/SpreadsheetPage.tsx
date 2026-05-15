@@ -2,8 +2,11 @@ import { FormulaBar } from '../features/spreadsheet/FormulaBar';
 import { SpreadsheetGrid } from '../features/spreadsheet/SpreadsheetGrid';
 import { ContextMenu } from '../features/spreadsheet/ContextMenu';
 import { loadCellsFromPreview as loadCellsFromPreviewAction } from '../store/slices/spreadsheetSlice';
-import { useEffect, useRef } from 'react';
-import { loadSavedDocument } from '../features/documents/mockDocumentsApi';
+import { useEffect, useRef, useState} from 'react';
+import {
+  getDocumentAccessStatus,
+  loadSavedDocument,
+} from '../features/documents/mockDocumentsApi';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSaveStatus, setUnsavedChanges } from '../store/slices/uiSlice';
 import {
@@ -31,6 +34,10 @@ export function SpreadsheetPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
   const userId = currentUser?.id;
 
+  const [accessStatus, setAccessStatus] = useState<
+    'allowed' | 'forbidden' | 'not_found' | null
+  >(null);
+
   const currentDocument = documents.find(
     (document) => document.id === documentId,
   );
@@ -57,6 +64,14 @@ export function SpreadsheetPage() {
 
     dispatch(loadDocuments(userId));
   }, [dispatch, userId]);
+
+  useEffect(() => {
+    if (!userId || !documentId || isLoading) return;
+
+    const status = getDocumentAccessStatus(userId, documentId);
+
+    setAccessStatus(status);
+  }, [userId, documentId, isLoading, documents.length]);
 
   useEffect(() => {
     if (!documentId || !userId || !currentDocument) return;
@@ -169,6 +184,14 @@ export function SpreadsheetPage() {
 
   if (isLoading) {
     return <div className="page">Загрузка документа...</div>;
+  }
+
+  if (accessStatus === 'forbidden') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (accessStatus === 'not_found') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (!currentDocument) {
