@@ -6,6 +6,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 
 export default function App() {
  const dispatch = useAppDispatch();
@@ -14,6 +16,9 @@ const openedDocument = useAppSelector((state) => state.documents.activeDocument)
     return (
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
