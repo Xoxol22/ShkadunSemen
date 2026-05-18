@@ -39,6 +39,3 @@ export type ContextMenuState = {
 	col: number;
 	target: 'cell' | 'row' | 'col';
 };
-
-
-//sadasdasd
