@@ -8,6 +8,10 @@ import {
   registerUser,
   LoginPayload,
   RegisterPayload,
+  changeUserPassword,
+  updateUserName,
+  ChangePasswordPayload,
+  UpdateUserNamePayload,
 } from '../../features/auth/mockAuthApi';
 
 type AuthState = {
@@ -51,6 +55,20 @@ export const logout = createAsyncThunk(
   'auth/logout',
   async () => {
     await logoutUser();
+  },
+);
+
+export const updateProfileName = createAsyncThunk(
+  'auth/updateProfileName',
+  async (payload: UpdateUserNamePayload) => {
+    return updateUserName(payload);
+  },
+);
+
+export const changePassword = createAsyncThunk(
+  'auth/changePassword',
+  async (payload: ChangePasswordPayload) => {
+    return changeUserPassword(payload);
   },
 );
 
@@ -106,7 +124,31 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.isAuthenticated = false;
         state.error = null;
-      });
+      })
+      .addCase(updateProfileName.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateProfileName.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload;
+      })
+      .addCase(updateProfileName.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? 'Ошибка изменения имени';
+      })
+
+      .addCase(changePassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? 'Ошибка смены пароля';
+      });      
   },
 });
 

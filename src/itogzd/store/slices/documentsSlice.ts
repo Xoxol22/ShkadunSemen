@@ -37,26 +37,9 @@ export const loadDocuments = createAsyncThunk<DocumentItem[], string>(
 	async (userId) => {
         const documentsListKey = getDocumentsListKey(userId);
 
-        const localDocumentsRaw = localStorage.getItem(documentsListKey);
-
-        if (!localDocumentsRaw) {
-            const response = await fetch('/itogzd/files/documents.json');
-
-            if (!response.ok) {
-                throw new Error('Failed to load documents');
-            }
-
-            const defaultDocuments = (await response.json()) as DocumentItem[];
-
-            localStorage.setItem(
-                documentsListKey,
-                JSON.stringify(defaultDocuments),
-            );
-
-            return defaultDocuments;
-        }
-
-        const localDocuments = JSON.parse(localDocumentsRaw) as DocumentItem[];
+        const localDocuments = JSON.parse(
+            localStorage.getItem(documentsListKey) ?? '[]',
+        ) as DocumentItem[];
 
 		return localDocuments.map((document) => {
 			const savedDocument = loadSavedDocument(document.id, userId);

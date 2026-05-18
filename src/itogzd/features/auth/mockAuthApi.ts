@@ -114,3 +114,66 @@ export async function refreshAccessToken(): Promise<string> {
 export async function logoutUser() {
   localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
 }
+
+export type UpdateUserNamePayload = {
+  userId: string;
+  name: string;
+};
+
+export type ChangePasswordPayload = {
+  userId: string;
+  currentPassword: string;
+  newPassword: string;
+};
+
+export async function updateUserName(payload: UpdateUserNamePayload): Promise<AuthUser> {
+  const users = getStoredUsers();
+
+  const user = users.find((storedUser) => storedUser.id === payload.userId);
+
+  if (!user) {
+    throw new Error('Пользователь не найден');
+  }
+
+  const updatedUser: StoredUser = {
+    ...user,
+    name: payload.name,
+  };
+
+  saveStoredUsers(
+    users.map((storedUser) =>
+      storedUser.id === payload.userId ? updatedUser : storedUser,
+    ),
+  );
+
+  const { password, ...userWithoutPassword } = updatedUser;
+
+  return userWithoutPassword;
+}
+
+export async function changeUserPassword(payload: ChangePasswordPayload) {
+  const users = getStoredUsers();
+
+  const user = users.find((storedUser) => storedUser.id === payload.userId);
+
+  if (!user) {
+    throw new Error('Пользователь не найден');
+  }
+
+  if (user.password !== payload.currentPassword) {
+    throw new Error('Текущий пароль указан неверно');
+  }
+
+  const updatedUser: StoredUser = {
+    ...user,
+    password: payload.newPassword,
+  };
+
+  saveStoredUsers(
+    users.map((storedUser) =>
+      storedUser.id === payload.userId ? updatedUser : storedUser,
+    ),
+  );
+
+  return { success: true };
+}
