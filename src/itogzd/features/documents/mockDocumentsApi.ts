@@ -1,106 +1,100 @@
 import type { CellData } from '../../types';
 
 type PatchDocumentPayload = {
-  cells: Record<string, CellData>;
-  updatedAt: string;
+	cells: Record<string, CellData>;
+	updatedAt: string;
 };
 
 export function getDocumentsListKey(userId: string) {
-  return `documents:list:${userId}`;
+	return `documents:list:${userId}`;
 }
 
 export function getDocumentStorageKey(userId: string, documentId: string) {
-  return `document:${userId}:${documentId}`;
+	return `document:${userId}:${documentId}`;
 }
 
 export function loadSavedDocument(documentId: string, userId: string) {
-  const rawDocument = localStorage.getItem(
-    getDocumentStorageKey(userId, documentId),
-  );
+	const rawDocument = localStorage.getItem(getDocumentStorageKey(userId, documentId));
 
-  if (!rawDocument) {
-    return null;
-  }
+	if (!rawDocument) {
+		return null;
+	}
 
-  return JSON.parse(rawDocument);
+	return JSON.parse(rawDocument);
 }
 
 export async function patchDocument(
-  userId: string,
-  documentId: string,
-  payload: PatchDocumentPayload,
+	userId: string,
+	documentId: string,
+	payload: PatchDocumentPayload,
 ) {
-  console.log(`PATCH /documents/${documentId}`, payload);
+	console.log(`PATCH /documents/${documentId}`, payload);
 
-  await new Promise((resolve) => {
-    setTimeout(resolve, 300);
-  });
+	await new Promise((resolve) => {
+		setTimeout(resolve, 300);
+	});
 
-  const documentStorageKey = getDocumentStorageKey(userId, documentId);
+	const documentStorageKey = getDocumentStorageKey(userId, documentId);
 
-  const raw = localStorage.getItem(documentStorageKey);
+	const raw = localStorage.getItem(documentStorageKey);
 
-  const current = raw ? JSON.parse(raw) : {};
+	const current = raw ? JSON.parse(raw) : {};
 
-  localStorage.setItem(
-    documentStorageKey,
-    JSON.stringify({
-      ...current,
-      cells: payload.cells,
-      updatedAt: payload.updatedAt,
-    }),
-  );
+	localStorage.setItem(
+		documentStorageKey,
+		JSON.stringify({
+			...current,
+			cells: payload.cells,
+			updatedAt: payload.updatedAt,
+		}),
+	);
 
-  return { success: true };
+	return { success: true };
 }
 
 export type DocumentAccessStatus = 'allowed' | 'forbidden' | 'not_found';
 
 function readDocumentIdsFromList(storageKey: string) {
-  try {
-    const rawDocuments = localStorage.getItem(storageKey);
+	try {
+		const rawDocuments = localStorage.getItem(storageKey);
 
-    if (!rawDocuments) {
-      return [];
-    }
+		if (!rawDocuments) {
+			return [];
+		}
 
-    const documents = JSON.parse(rawDocuments) as Array<{ id?: unknown }>;
+		const documents = JSON.parse(rawDocuments) as Array<{ id?: unknown }>;
 
-    return documents
-      .map((document) => document.id)
-      .filter((id): id is string => typeof id === 'string');
-  } catch {
-    return [];
-  }
+		return documents
+			.map((document) => document.id)
+			.filter((id): id is string => typeof id === 'string');
+	} catch {
+		return [];
+	}
 }
 
 export function getDocumentAccessStatus(
-  userId: string,
-  documentId: string,
+	userId: string,
+	documentId: string,
 ): DocumentAccessStatus {
-  const currentUserDocumentsKey = getDocumentsListKey(userId);
+	const currentUserDocumentsKey = getDocumentsListKey(userId);
 
-  const currentUserDocumentIds = readDocumentIdsFromList(
-    currentUserDocumentsKey,
-  );
+	const currentUserDocumentIds = readDocumentIdsFromList(currentUserDocumentsKey);
 
-  if (currentUserDocumentIds.includes(documentId)) {
-    return 'allowed';
-  }
+	if (currentUserDocumentIds.includes(documentId)) {
+		return 'allowed';
+	}
 
-  const documentExistsInAnotherAccount = Object.keys(localStorage)
-    .filter(
-      (key) =>
-        key.startsWith('documents:list:') &&
-        key !== currentUserDocumentsKey,
-    )
-    .some((key) => readDocumentIdsFromList(key).includes(documentId));
+	const documentExistsInAnotherAccount = Object.keys(localStorage)
+		.filter(
+			(key) => key.startsWith('documents:list:') && key !== currentUserDocumentsKey,
+		)
+		.some((key) => readDocumentIdsFromList(key).includes(documentId));
 
-  if (documentExistsInAnotherAccount) {
-    console.warn(`GET /documents/${documentId} -> 403 Forbidden`);
+	if (documentExistsInAnotherAccount) {
+		console.warn(`GET /documents/${documentId} -> 403 Forbidden`);
 
-    return 'forbidden';
-  }
+		return 'forbidden';
+	}
 
-  return 'not_found';
+	return 'not_found';
 }

@@ -47,11 +47,7 @@ const uiSlice = createSlice({
 	},
 });
 
-export const {
-	setSaveStatus,
-	setUnsavedChanges,
-	openContextMenu,
-	closeContextMenu,
-} = uiSlice.actions;
+export const { setSaveStatus, setUnsavedChanges, openContextMenu, closeContextMenu } =
+	uiSlice.actions;
 
 export default uiSlice.reducer;

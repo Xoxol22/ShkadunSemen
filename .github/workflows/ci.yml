@@ -1,24 +1,40 @@
-name: Typescript CI
+name: CI
 
 on:
-    push:
-        branches: [ master ]
-    pull_request: 
-        branches: [ master ]
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
 
 jobs:
-    build:
-        name: Build and Test
-        runs-on: ubuntu-latest
-        
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+  checks:
+    runs-on: ubuntu-latest
 
-            - name: Install dependencies
-              run: |
-                npm ci
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Run tests
-              run: |
-                npm test
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Build project
+        run: npm run build

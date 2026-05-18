@@ -1,231 +1,214 @@
 import { FormulaBar } from '../features/spreadsheet/FormulaBar';
 import { SpreadsheetGrid } from '../features/spreadsheet/SpreadsheetGrid';
 import { ContextMenu } from '../features/spreadsheet/ContextMenu';
-import { loadCellsFromPreview as loadCellsFromPreviewAction } from '../store/slices/spreadsheetSlice';
-import { useEffect, useRef, useState} from 'react';
 import {
-  getDocumentAccessStatus,
-  loadSavedDocument,
+	loadCells,
+	loadCellsFromPreview as loadCellsFromPreviewAction,
+} from '../store/slices/spreadsheetSlice';
+import { useEffect, useRef, useState } from 'react';
+import {
+	getDocumentAccessStatus,
+	loadSavedDocument,
 } from '../features/documents/mockDocumentsApi';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSaveStatus, setUnsavedChanges } from '../store/slices/uiSlice';
 import {
-  loadDocuments,
-  saveDocument as saveDocumentThunk,
-  setActiveDocument,
+	loadDocuments,
+	saveDocument as saveDocumentThunk,
+	setActiveDocument,
 } from '../store/slices/documentsSlice';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-
+import { FormattingToolbar } from '../features/spreadsheet/FormattingToolbar';
 
 export function SpreadsheetPage() {
-  const { documentId } = useParams<{ documentId: string }>();
-  const navigate = useNavigate();
+	const { documentId } = useParams<{ documentId: string }>();
+	const navigate = useNavigate();
 
-  const dispatch = useAppDispatch();
+	const dispatch = useAppDispatch();
 
-  const documents = useAppSelector((state) => state.documents.items);
-  const isLoading = useAppSelector((state) => state.documents.isLoading);
+	const documents = useAppSelector((state) => state.documents.items);
+	const isLoading = useAppSelector((state) => state.documents.isLoading);
 
-  const cells = useAppSelector((state) => state.spreadsheet.cells);
+	const cells = useAppSelector((state) => state.spreadsheet.cells);
 
-  const saveStatus = useAppSelector((state) => state.ui.saveStatus);
-  const hasUnsavedChanges = useAppSelector((state) => state.ui.hasUnsavedChanges);
+	const saveStatus = useAppSelector((state) => state.ui.saveStatus);
+	const hasUnsavedChanges = useAppSelector((state) => state.ui.hasUnsavedChanges);
 
-  const currentUser = useAppSelector((state) => state.auth.user);
-  const userId = currentUser?.id;
+	const currentUser = useAppSelector((state) => state.auth.user);
+	const userId = currentUser?.id;
 
-  const [accessStatus, setAccessStatus] = useState<
-    'allowed' | 'forbidden' | 'not_found' | null
-  >(null);
+	const [accessStatus, setAccessStatus] = useState<
+		'allowed' | 'forbidden' | 'not_found' | null
+	>(null);
 
-  const currentDocument = documents.find(
-    (document) => document.id === documentId,
-  );
-  useEffect(() => {
-    if (!currentDocument) return;
+	const currentDocument = documents.find((document) => document.id === documentId);
+	useEffect(() => {
+		if (!currentDocument) return;
 
-    dispatch(
-      setActiveDocument({
-        id: currentDocument.id,
-        title: currentDocument.title,
-        preview: currentDocument.preview,
-      }),
-    );
+		dispatch(
+			setActiveDocument({
+				id: currentDocument.id,
+				title: currentDocument.title,
+				preview: currentDocument.preview,
+			}),
+		);
 
-    return () => {
-      dispatch(setActiveDocument(null));
-    };
-  }, [currentDocument, dispatch]);
+		return () => {
+			dispatch(setActiveDocument(null));
+		};
+	}, [currentDocument, dispatch]);
 
-  const loadedDocumentKeyRef = useRef<string | null>(null);
+	const loadedDocumentKeyRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!userId) return;
+	useEffect(() => {
+		if (!userId) return;
 
-    dispatch(loadDocuments(userId));
-  }, [dispatch, userId]);
+		dispatch(loadDocuments(userId));
+	}, [dispatch, userId]);
 
-  useEffect(() => {
-    if (!userId || !documentId || isLoading) return;
+	useEffect(() => {
+		if (!userId || !documentId || isLoading) return;
 
-    const status = getDocumentAccessStatus(userId, documentId);
+		const status = getDocumentAccessStatus(userId, documentId);
 
-    setAccessStatus(status);
-  }, [userId, documentId, isLoading, documents.length]);
+		setAccessStatus(status);
+	}, [userId, documentId, isLoading, documents.length]);
 
-  useEffect(() => {
-    if (!documentId || !userId || !currentDocument) return;
+	useEffect(() => {
+		if (!documentId || !userId || !currentDocument) return;
 
-    const loadedDocumentKey = `${userId}:${documentId}`;
+		const loadedDocumentKey = `${userId}:${documentId}`;
 
-    if (loadedDocumentKeyRef.current === loadedDocumentKey) return;
+		if (loadedDocumentKeyRef.current === loadedDocumentKey) return;
 
-    const savedDocument = loadSavedDocument(documentId, userId);
+		const savedDocument = loadSavedDocument(documentId, userId);
 
-    if (savedDocument?.cells) {
-      const previewFromSaved = Object.entries(savedDocument.cells).reduce(
-        (accumulator, [key, cell]) => {
-          const [rowText, colText] = key.split(':');
+		if (savedDocument?.cells) {
+			dispatch(loadCells(savedDocument.cells));
+		} else {
+			dispatch(loadCellsFromPreviewAction(currentDocument.preview));
+		}
 
-          const row = Number(rowText);
-          const col = Number(colText);
+		loadedDocumentKeyRef.current = loadedDocumentKey;
+	}, [currentDocument, dispatch, documentId, userId]);
 
-          if (!accumulator[row]) {
-            accumulator[row] = [];
-          }
+	async function saveDocument() {
+		if (!documentId || !userId) return;
 
-          accumulator[row][col] = (cell as { raw: string }).raw;
+		try {
+			dispatch(setSaveStatus('saving'));
 
-          return accumulator;
-        },
-        [] as string[][],
-      );
+			await dispatch(
+				saveDocumentThunk({
+					userId,
+					documentId,
+					cells,
+					updatedAt: new Date().toISOString(),
+				}),
+			).unwrap();
 
-      dispatch(loadCellsFromPreviewAction(previewFromSaved));
-    } else {
-      dispatch(loadCellsFromPreviewAction(currentDocument.preview));
-    }
+			dispatch(setSaveStatus('saved'));
+			dispatch(setUnsavedChanges(false));
+		} catch {
+			dispatch(setSaveStatus('error'));
+		}
+	}
 
-    loadedDocumentKeyRef.current = loadedDocumentKey;
-  }, [currentDocument, dispatch, documentId, userId]);
+	useEffect(() => {
+		function handleSaveShortcut(event: KeyboardEvent) {
+			const key = event.key?.toLowerCase() ?? '';
 
-  async function saveDocument() {
-    if (!documentId || !userId) return;
+			const isSaveShortcut =
+				(event.ctrlKey || event.metaKey) &&
+				(key === 's' || event.code === 'KeyS');
 
-    try {
-      dispatch(setSaveStatus('saving'));
+			if (!isSaveShortcut) return;
 
-      await dispatch(
-        saveDocumentThunk({
-          userId,
-          documentId,
-          cells,
-          updatedAt: new Date().toISOString(),
-        }),
-      ).unwrap();
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
 
-      dispatch(setSaveStatus('saved'));
-      dispatch(setUnsavedChanges(false));
-    } catch {
-      dispatch(setSaveStatus('error'));
-    }
-  }
+			saveDocument();
+		}
 
-  useEffect(() => {
-    function handleSaveShortcut(event: KeyboardEvent) {
-      const key = event.key?.toLowerCase() ?? '';
+		document.addEventListener('keydown', handleSaveShortcut, {
+			capture: true,
+		});
 
-      const isSaveShortcut =
-        (event.ctrlKey || event.metaKey) &&
-        (key === 's' || event.code === 'KeyS');
+		return () => {
+			document.removeEventListener('keydown', handleSaveShortcut, {
+				capture: true,
+			});
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [cells, documentId, dispatch, userId]);
 
-      if (!isSaveShortcut) return;
+	useEffect(() => {
+		function handleBeforeUnload(event: BeforeUnloadEvent) {
+			if (!hasUnsavedChanges) return;
 
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
+			event.preventDefault();
+			event.returnValue = '';
+		}
 
-      saveDocument();
-    }
+		window.addEventListener('beforeunload', handleBeforeUnload);
 
-    document.addEventListener('keydown', handleSaveShortcut, {
-      capture: true,
-    });
+		return () => {
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+		};
+	}, [hasUnsavedChanges]);
 
-    return () => {
-      document.removeEventListener('keydown', handleSaveShortcut, {
-        capture: true,
-      });
-    };
-  }, [cells, documentId, dispatch, userId]);
+	if (!userId) {
+		return <Navigate to="/login" replace />;
+	}
 
-  useEffect(() => {
-    function handleBeforeUnload(event: BeforeUnloadEvent) {
-      if (!hasUnsavedChanges) return;
+	if (!documentId) {
+		return <Navigate to="/dashboard" replace />;
+	}
 
-      event.preventDefault();
-      event.returnValue = '';
-    }
+	if (isLoading) {
+		return <div className="page">Загрузка документа...</div>;
+	}
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+	if (accessStatus === 'forbidden') {
+		return <Navigate to="/dashboard" replace />;
+	}
 
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [hasUnsavedChanges]);
+	if (accessStatus === 'not_found') {
+		return <Navigate to="/dashboard" replace />;
+	}
 
-  if (!userId) {
-    return <Navigate to="/login" replace />;
-  }
+	if (!currentDocument) {
+		return <Navigate to="/dashboard" replace />;
+	}
 
-  if (!documentId) {
-    return <Navigate to="/dashboard" replace />;
-  }
+	return (
+		<div className="page">
+			<div className="topPanel">
+				<div className="topPanelLeft">
+					<button className="backButton" onClick={() => navigate('/dashboard')}>
+						←
+					</button>
 
-  if (isLoading) {
-    return <div className="page">Загрузка документа...</div>;
-  }
+					<div className="documentTitle">{currentDocument.title}</div>
+				</div>
 
-  if (accessStatus === 'forbidden') {
-    return <Navigate to="/dashboard" replace />;
-  }
+				<div className="topPanelActions" />
+			</div>
 
-  if (accessStatus === 'not_found') {
-    return <Navigate to="/dashboard" replace />;
-  }
+			<FormulaBar />
+			<FormattingToolbar />
+			<div className={`saveStatusBar saveStatusBar_${saveStatus}`}>
+				{saveStatus === 'saved' && 'Сохранено'}
+				{saveStatus === 'saving' && 'Сохранение...'}
+				{saveStatus === 'error' && 'Ошибка сохранения'}
+			</div>
 
-  if (!currentDocument) {
-    return <Navigate to="/dashboard" replace />;
-  }
+			<main className="sheetShell">
+				<SpreadsheetGrid />
+			</main>
 
-  return (
-    <div className="page">
-        <div className="topPanel">
-      <div className="topPanelLeft">
-        <button className="backButton" onClick={() => navigate('/dashboard')}>
-          ←
-        </button>
-
-        <div className="documentTitle">
-          {currentDocument.title}
-        </div>
-      </div>
-
-      <div className="topPanelActions" />
-    </div>
-
-      <FormulaBar />
-      <div className={`saveStatusBar saveStatusBar_${saveStatus}`}>
-        {saveStatus === 'saved' && 'Сохранено'}
-        {saveStatus === 'saving' && 'Сохранение...'}
-        {saveStatus === 'error' && 'Ошибка сохранения'}
-      </div>
-
-      <main className="sheetShell">
-        <SpreadsheetGrid />
-      </main>
-
-      <ContextMenu />
-    </div>
-  );
+			<ContextMenu />
+		</div>
+	);
 }

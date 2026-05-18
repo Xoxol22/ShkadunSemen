@@ -10,10 +10,18 @@ export const autosaveMiddleware: Middleware = (store) => (next) => (action) => {
 
 	const typedAction = action as UnknownAction;
 
-	if (
-		typedAction.type !== 'spreadsheet/setCellRaw' &&
-		typedAction.type !== 'spreadsheet/setFormulaValue'
-	) {
+	const autosaveActionTypes = [
+		'spreadsheet/setCellRaw',
+		'spreadsheet/setFormulaValue',
+		'spreadsheet/applyCellStyle',
+		'spreadsheet/toggleCellStyle',
+		'spreadsheet/setNumberFormat',
+		'spreadsheet/clearSelection',
+		'spreadsheet/cutSelection',
+		'spreadsheet/pasteClipboard',
+	];
+
+	if (!autosaveActionTypes.includes(String(typedAction.type))) {
 		return result;
 	}
 

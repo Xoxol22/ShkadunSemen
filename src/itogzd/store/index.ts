@@ -6,14 +6,14 @@ import authReducer from './slices/authSlice';
 import { autosaveMiddleware } from './middleware/autosaveMiddleware';
 
 export const store = configureStore({
-  reducer: {
-    ui: uiReducer,
-    documents: documentsReducer,
-    spreadsheet: spreadsheetReducer,
-    auth: authReducer,
-    },
-    
-  middleware: (getDefaultMiddleware) =>
+	reducer: {
+		ui: uiReducer,
+		documents: documentsReducer,
+		spreadsheet: spreadsheetReducer,
+		auth: authReducer,
+	},
+
+	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware().concat(autosaveMiddleware),
 });
 

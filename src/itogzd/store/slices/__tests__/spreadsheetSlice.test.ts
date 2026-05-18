@@ -52,10 +52,7 @@ describe('spreadsheetSlice', () => {
 			}),
 		);
 
-		const state = spreadsheetReducer(
-			selected,
-			extendSelection({ row: 2, col: 2 }),
-		);
+		const state = spreadsheetReducer(selected, extendSelection({ row: 2, col: 2 }));
 
 		expect(state.selection?.start).toEqual({ row: 0, col: 0 });
 		expect(state.selection?.end).toEqual({ row: 2, col: 2 });
@@ -81,10 +78,7 @@ describe('spreadsheetSlice', () => {
 	});
 
 	it('включает режим редактирования', () => {
-		const state = spreadsheetReducer(
-			undefined,
-			setEditingCell({ row: 1, col: 1 }),
-		);
+		const state = spreadsheetReducer(undefined, setEditingCell({ row: 1, col: 1 }));
 
 		expect(state.editingCell).toEqual({ row: 1, col: 1 });
 	});
