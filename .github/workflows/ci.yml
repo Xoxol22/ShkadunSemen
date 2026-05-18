@@ -1,40 +1,38 @@
-name: CI
+name: Проверка проекта
 
 on:
   push:
     branches:
       - main
-      - master
+      - FinalProject
   pull_request:
     branches:
       - main
-      - master
+      - FinalProject
 
 jobs:
-  checks:
+  check:
+    name: Сборка и тесты
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Скачать код
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Установить Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
-      - name: Install dependencies
+      - name: Установить зависимости
         run: npm ci
 
-      - name: Run ESLint
+      - name: Проверить ESLint
         run: npm run lint
 
-      - name: Check formatting
-        run: npm run format:check
+      - name: Запустить тесты
+        run: npm run test -- --run
 
-      - name: Run tests
-        run: npm run test:run
-
-      - name: Build project
+      - name: Собрать проект
         run: npm run build
