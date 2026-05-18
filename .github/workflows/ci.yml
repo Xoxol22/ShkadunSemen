@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-      - FinalProject
+      - itogzd
   pull_request:
     branches:
       - main
-      - FinalProject
+      - itogzd
 
 jobs:
   check:
