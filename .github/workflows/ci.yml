@@ -1,0 +1,38 @@
+name: Проверка проекта
+
+on:
+  push:
+    branches:
+      - main
+      - itogzd
+  pull_request:
+    branches:
+      - main
+      - itogzd
+
+jobs:
+  check:
+    name: Сборка и тесты
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Скачать код
+        uses: actions/checkout@v4
+
+      - name: Установить Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Установить зависимости
+        run: npm ci
+
+      - name: Проверить ESLint
+        run: npm run lint
+
+      - name: Запустить тесты
+        run: npm run test -- --run
+
+      - name: Собрать проект
+        run: npm run build

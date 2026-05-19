@@ -1,0 +1,74 @@
+.appLayout {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	background: #f4f6fb;
+}
+
+.appHeader {
+	height: 56px;
+	flex-shrink: 0;
+
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+
+	padding: 0 28px;
+
+	background: white;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.breadcrumbs {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+
+	font-size: 16px;
+	font-weight: 500;
+	color: #64748b;
+}
+
+.breadcrumbs a {
+	color: #2563eb;
+	text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+	text-decoration: underline;
+}
+
+.breadcrumbsSeparator {
+	color: #94a3b8;
+}
+
+.breadcrumbsCurrent {
+	color: #0f172a;
+	font-weight: 600;
+}
+
+.topNav {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.topNav a {
+	color: #64748b;
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.topNav a:hover {
+	color: #2563eb;
+}
+
+.topNav a.active {
+	color: #2563eb;
+}
+
+.appContent {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+}
