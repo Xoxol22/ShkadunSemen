@@ -16,6 +16,14 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "vite.config.ts"],
+  "include": ["src/itogzd/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/lab3",
+    "src/lab7",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ],
   "references": []
 }
