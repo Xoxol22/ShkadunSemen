@@ -28,6 +28,7 @@ type StoredUser = AuthUser & {
 
 const USERS_STORAGE_KEY = 'auth:users';
 const REFRESH_TOKEN_STORAGE_KEY = 'auth:refreshToken';
+const CURRENT_USER_ID_STORAGE_KEY = 'auth:currentUserId';
 
 function getStoredUsers(): StoredUser[] {
 	return JSON.parse(localStorage.getItem(USERS_STORAGE_KEY) ?? '[]') as StoredUser[];
@@ -64,6 +65,7 @@ export async function registerUser(payload: RegisterPayload): Promise<AuthRespon
 	const refreshToken = createToken('refresh');
 
 	localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+	localStorage.setItem(CURRENT_USER_ID_STORAGE_KEY, newUser.id);
 
 	const { password: _password, ...userWithoutPassword } = newUser;
 
@@ -91,6 +93,34 @@ export async function loginUser(payload: LoginPayload): Promise<AuthResponse> {
 	const refreshToken = createToken('refresh');
 
 	localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+	localStorage.setItem(CURRENT_USER_ID_STORAGE_KEY, user.id);
+
+	const { password: _password, ...userWithoutPassword } = user;
+
+	return {
+		user: userWithoutPassword,
+		accessToken,
+		refreshToken,
+	};
+}
+
+export async function restoreAuthSession(): Promise<AuthResponse> {
+	const refreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+	const currentUserId = localStorage.getItem(CURRENT_USER_ID_STORAGE_KEY);
+
+	if (!refreshToken || !currentUserId) {
+		throw new Error('Активная сессия не найдена');
+	}
+
+	const users = getStoredUsers();
+
+	const user = users.find((storedUser) => storedUser.id === currentUserId);
+
+	if (!user) {
+		throw new Error('Пользователь не найден');
+	}
+
+	const accessToken = createToken('access');
 
 	const { password: _password, ...userWithoutPassword } = user;
 
@@ -113,6 +143,7 @@ export async function refreshAccessToken(): Promise<string> {
 
 export async function logoutUser() {
 	localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+	localStorage.removeItem(CURRENT_USER_ID_STORAGE_KEY);
 }
 
 export type UpdateUserNamePayload = {

@@ -1,14 +1,23 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { DocumentsPage } from './pages/DocumentsPage';
-import { SpreadsheetPage } from './pages/SpreadsheetPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { DocumentsPage } from './pages/DocumentsPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
+import { SpreadsheetPage } from './pages/SpreadsheetPage';
+import { useAppDispatch } from './store/hooks';
+import { restoreSession } from './store/slices/authSlice';
 
 export default function App() {
+	const dispatch = useAppDispatch();
+
+	useEffect(() => {
+		dispatch(restoreSession());
+	}, [dispatch]);
+
 	return (
 		<Routes>
 			<Route path="/" element={<Navigate to="/dashboard" replace />} />

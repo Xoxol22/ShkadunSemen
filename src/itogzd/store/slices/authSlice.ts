@@ -1,17 +1,18 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 import {
-	AuthUser,
+	type AuthUser,
+	type ChangePasswordPayload,
+	type LoginPayload,
+	type RegisterPayload,
+	type UpdateUserNamePayload,
+	changeUserPassword,
 	loginUser,
 	logoutUser,
 	refreshAccessToken,
 	registerUser,
-	LoginPayload,
-	RegisterPayload,
-	changeUserPassword,
+	restoreAuthSession,
 	updateUserName,
-	ChangePasswordPayload,
-	UpdateUserNamePayload,
 } from '../../features/auth/mockAuthApi';
 
 type AuthState = {
@@ -19,6 +20,7 @@ type AuthState = {
 	accessToken: string | null;
 	isAuthenticated: boolean;
 	isLoading: boolean;
+	isInitialized: boolean;
 	error: string | null;
 };
 
@@ -27,8 +29,13 @@ const initialState: AuthState = {
 	accessToken: null,
 	isAuthenticated: false,
 	isLoading: false,
+	isInitialized: false,
 	error: null,
 };
+
+export const restoreSession = createAsyncThunk('auth/restoreSession', async () => {
+	return restoreAuthSession();
+});
 
 export const login = createAsyncThunk('auth/login', async (payload: LoginPayload) => {
 	return loginUser(payload);
@@ -75,18 +82,42 @@ const authSlice = createSlice({
 
 	extraReducers: (builder) => {
 		builder
+			.addCase(restoreSession.pending, (state) => {
+				state.isLoading = true;
+				state.error = null;
+			})
+			.addCase(restoreSession.fulfilled, (state, action) => {
+				state.isLoading = false;
+				state.isInitialized = true;
+				state.user = action.payload.user;
+				state.accessToken = action.payload.accessToken;
+				state.isAuthenticated = true;
+				state.error = null;
+			})
+			.addCase(restoreSession.rejected, (state) => {
+				state.isLoading = false;
+				state.isInitialized = true;
+				state.user = null;
+				state.accessToken = null;
+				state.isAuthenticated = false;
+				state.error = null;
+			})
+
 			.addCase(login.pending, (state) => {
 				state.isLoading = true;
 				state.error = null;
 			})
 			.addCase(login.fulfilled, (state, action) => {
 				state.isLoading = false;
+				state.isInitialized = true;
 				state.user = action.payload.user;
 				state.accessToken = action.payload.accessToken;
 				state.isAuthenticated = true;
+				state.error = null;
 			})
 			.addCase(login.rejected, (state, action) => {
 				state.isLoading = false;
+				state.isInitialized = true;
 				state.error = action.error.message ?? 'Ошибка входа';
 			})
 
@@ -96,12 +127,15 @@ const authSlice = createSlice({
 			})
 			.addCase(register.fulfilled, (state, action) => {
 				state.isLoading = false;
+				state.isInitialized = true;
 				state.user = action.payload.user;
 				state.accessToken = action.payload.accessToken;
 				state.isAuthenticated = true;
+				state.error = null;
 			})
 			.addCase(register.rejected, (state, action) => {
 				state.isLoading = false;
+				state.isInitialized = true;
 				state.error = action.error.message ?? 'Ошибка регистрации';
 			})
 
@@ -114,8 +148,10 @@ const authSlice = createSlice({
 				state.user = null;
 				state.accessToken = null;
 				state.isAuthenticated = false;
+				state.isInitialized = true;
 				state.error = null;
 			})
+
 			.addCase(updateProfileName.pending, (state) => {
 				state.isLoading = true;
 				state.error = null;
